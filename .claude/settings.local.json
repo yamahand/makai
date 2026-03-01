@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmake:*)",
+      "Bash(cmake --build:*)",
+      "Bash(ninja:*)",
+      "Bash(make:*)",
+      "Bash(g++:*)",
+      "Bash(clang++:*)",
+      "Bash(cl:*)",
+      "Bash(msbuild:*)",
+      "Bash(vcpkg:*)",
+      "Bash(git:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(dir \"C:\\Users\\a1829\\dev\\makai\")",
+      "Bash(dir \"C:\\Users\\a1829\\dev\\makai\\src\" /s /b)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
