@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include <stack>
+#include <vector>
 #include <SDL3/SDL.h>
 
 namespace makai {
