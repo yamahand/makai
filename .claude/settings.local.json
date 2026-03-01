@@ -19,7 +19,13 @@
       "Bash(cp:*)",
       "Bash(mv:*)",
       "Bash(dir \"C:\\Users\\a1829\\dev\\makai\")",
-      "Bash(dir \"C:\\Users\\a1829\\dev\\makai\\src\" /s /b)"
+      "Bash(dir \"C:\\Users\\a1829\\dev\\makai\\src\" /s /b)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(makai.exe)",
+      "Bash(timeout /t 2)",
+      "Bash(cmd /c \"C:\\Users\\a1829\\dev\\makai\\build\\Debug\\makai.exe\")",
+      "Bash(cmd /c \"dir build\\Debug\\SDL*.dll\")"
     ],
     "deny": [],
     "ask": []

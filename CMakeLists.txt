@@ -9,14 +9,19 @@ if(MSVC)
     add_compile_options(/utf-8)
 endif()
 
-# SDL3 を自動取得
+# SDL3 と SDL3_ttf を自動取得
 include(FetchContent)
 FetchContent_Declare(
     SDL3
     GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
     GIT_TAG        main
 )
-FetchContent_MakeAvailable(SDL3)
+FetchContent_Declare(
+    SDL3_ttf
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL_ttf.git
+    GIT_TAG        main
+)
+FetchContent_MakeAvailable(SDL3 SDL3_ttf)
 
 # ソースファイル収集
 file(GLOB_RECURSE SOURCES
@@ -25,11 +30,26 @@ file(GLOB_RECURSE SOURCES
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
+# Set as startup project in Visual Studio
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
+
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/src
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE SDL3::SDL3)
+target_link_libraries(${PROJECT_NAME} PRIVATE SDL3::SDL3 SDL3_ttf::SDL3_ttf)
+
+# Copy SDL3 and SDL3_ttf DLLs to executable directory (Windows only)
+if(WIN32)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:SDL3::SDL3>
+            $<TARGET_FILE_DIR:${PROJECT_NAME}>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:SDL3_ttf::SDL3_ttf>
+            $<TARGET_FILE_DIR:${PROJECT_NAME}>
+    )
+endif()
 
 # アセットをビルドディレクトリにコピー
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD

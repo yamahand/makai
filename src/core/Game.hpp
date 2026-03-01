@@ -1,6 +1,7 @@
 #pragma once
 #include "Window.hpp"
 #include "SceneManager.hpp"
+#include "../utils/FontManager.hpp"
 #include <memory>
 
 namespace makai {
@@ -18,6 +19,7 @@ public:
 
     SceneManager& sceneManager() { return m_sceneManager; }
     Window&       window()       { return *m_window; }
+    FontManager&  fontManager()  { return m_fontManager; }
 
 private:
     void processEvents();
@@ -26,6 +28,7 @@ private:
 
     std::unique_ptr<Window> m_window;
     SceneManager            m_sceneManager;
+    FontManager             m_fontManager;
     bool                    m_running = false;
 };
 

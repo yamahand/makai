@@ -11,6 +11,10 @@ Game::Game() {
     }
     m_window = std::make_unique<Window>("makai", SCREEN_WIDTH, SCREEN_HEIGHT);
 
+    // Load default font
+    m_fontManager.loadFont("default", "assets/fonts/DotGothic16/DotGothic16-Regular.ttf", 16);
+    m_fontManager.loadFont("large", "assets/fonts/DotGothic16/DotGothic16-Regular.ttf", 32);
+
     // 最初のシーンをセット
     m_sceneManager.push(std::make_unique<TitleScene>(*this));
     m_sceneManager.applyPendingChanges();
