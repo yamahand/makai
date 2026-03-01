@@ -34,6 +34,9 @@ public:
 
     StateMachine& stateMachine() { return m_stateMachine; }
 
+    // Get current state name for HUD display
+    const char* getCurrentStateName() const;
+
 private:
     PlayerStats  m_stats;
     StateMachine m_stateMachine;

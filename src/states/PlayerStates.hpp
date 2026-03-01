@@ -12,6 +12,7 @@ public:
     void onEnter() override;
     void handleInput(SDL_Scancode key) override;
     void update(float deltaTime) override;
+    const char* getName() const override { return "Idle"; }
 private:
     Player& m_player;
     float   m_elapsed = 0.0f;
@@ -24,6 +25,7 @@ public:
     void onEnter() override;
     void update(float deltaTime) override;
     void onExit() override;
+    const char* getName() const override { return "Working"; }
 private:
     Player& m_player;
     float   m_workTimer  = 0.0f;
@@ -37,6 +39,7 @@ public:
     void onEnter() override;
     void update(float deltaTime) override;
     void onExit() override;
+    const char* getName() const override { return "Resting"; }
 private:
     Player& m_player;
     float   m_restTimer    = 0.0f;
@@ -50,6 +53,7 @@ public:
     void onEnter() override;
     void update(float deltaTime) override;
     void onExit() override;
+    const char* getName() const override { return "Eating"; }
 private:
     Player& m_player;
     float   m_eatTimer = 0.0f;

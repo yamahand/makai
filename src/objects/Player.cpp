@@ -41,4 +41,11 @@ void Player::render(SDL_Renderer* renderer) {
     SDL_RenderFillRect(renderer, &rect);
 }
 
+const char* Player::getCurrentStateName() const {
+    if (m_stateMachine.currentState()) {
+        return m_stateMachine.currentState()->getName();
+    }
+    return "Unknown";
+}
+
 } // namespace makai

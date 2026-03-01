@@ -22,6 +22,8 @@ public:
 private:
     void updateDayCycle(float deltaTime);
     void renderHUD(SDL_Renderer* renderer);
+    void renderStatBar(SDL_Renderer* renderer, float x, float y, float w, float h,
+                       int value, int maxValue, SDL_Color barColor);
 
     std::unique_ptr<Player> m_player;
 

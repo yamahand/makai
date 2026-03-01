@@ -13,6 +13,7 @@ public:
     virtual void onExit()                     {}
     virtual void handleInput(SDL_Scancode key) {}
     virtual void update(float deltaTime)       {}
+    virtual const char* getName() const { return "Unknown"; }
 };
 
 // 汎用ステートマシン
