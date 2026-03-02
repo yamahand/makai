@@ -1,5 +1,6 @@
 #include "SceneManager.hpp"
 #include "../scenes/Scene.hpp"
+#include "../memory/MemoryManager.hpp"
 
 namespace makai {
 
@@ -36,6 +37,8 @@ void SceneManager::render(SDL_Renderer* renderer) {
 }
 
 void SceneManager::applyPendingChanges() {
+    bool sceneChanged = !m_pending.empty();
+
     for (auto& change : m_pending) {
         switch (change.command) {
             case Command::Push:
@@ -55,6 +58,11 @@ void SceneManager::applyPendingChanges() {
         }
     }
     m_pending.clear();
+
+    // シーン変更時にシーンアロケーターをリセット
+    if (sceneChanged) {
+        memory::MemoryManager::instance().onSceneChange();
+    }
 }
 
 } // namespace makai

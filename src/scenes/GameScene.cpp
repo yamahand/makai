@@ -11,6 +11,14 @@ GameScene::GameScene(Game& game)
     : Scene(game)
     , m_player(memory::GameObjectFactory::create<Player>())
 {
+    // シーンアロケーター使用例:
+    // シーン固有の一時データをシーンアロケーターから割り当て可能
+    // 例:
+    //   auto& sceneAlloc = game.memoryManager().sceneAllocator();
+    //   m_uiLayout = (UILayout*)sceneAlloc.allocate(sizeof(UILayout));
+    //   new (m_uiLayout) UILayout();
+    //
+    // シーン遷移時に自動的にリセットされるため、手動解放不要
 }
 
 void GameScene::onEnter() {

@@ -1,5 +1,6 @@
 #include "Game.hpp"
 #include "../scenes/TitleScene.hpp"
+#include "../objects/Player.hpp"
 #include <SDL3/SDL.h>
 #include <imgui.h>
 #include <stdexcept>
@@ -154,6 +155,17 @@ void Game::renderImGui() {
         ImGui::Text("Total Allocations:");
         ImGui::Text("  Frame: %zu", stats.totalFrameAllocations);
         ImGui::Text("  Scene: %zu", stats.totalSceneAllocations);
+
+        ImGui::Separator();
+
+        // プールアロケーター
+        ImGui::Text("Object Pools:");
+        auto& playerPool = memoryManager().getPool<Player>();
+        ImGui::Text("  Player: %zu / %zu (%.1f%%)",
+                    playerPool.getUsedCount(),
+                    playerPool.getCapacity(),
+                    playerPool.getUsageRatio() * 100.0f);
+        ImGui::ProgressBar(playerPool.getUsageRatio(), ImVec2(-1, 0));
     }
     ImGui::End();
 
