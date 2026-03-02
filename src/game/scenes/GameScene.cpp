@@ -1,6 +1,6 @@
 #include "GameScene.hpp"
-#include "../core/Game.hpp"
-#include "../memory/GameObjectFactory.hpp"
+#include "engine/core/Game.hpp"
+#include "engine/memory/GameObjectFactory.hpp"
 #include <string>
 #include <sstream>
 #include <iomanip>

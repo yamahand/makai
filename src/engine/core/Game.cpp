@@ -1,6 +1,6 @@
 #include "Game.hpp"
-#include "../scenes/TitleScene.hpp"
-#include "../objects/Player.hpp"
+#include "game/scenes/TitleScene.hpp"
+#include "game/objects/Player.hpp"
 #include <SDL3/SDL.h>
 #include <imgui.h>
 #include <stdexcept>

@@ -1,5 +1,5 @@
 #pragma once
-#include "Scene.hpp"
+#include "engine/scenes/Scene.hpp"
 
 namespace makai {
 

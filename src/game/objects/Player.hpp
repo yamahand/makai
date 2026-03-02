@@ -1,6 +1,6 @@
 #pragma once
-#include "GameObject.hpp"
-#include "../states/StateMachine.hpp"
+#include "engine/objects/GameObject.hpp"
+#include "engine/states/StateMachine.hpp"
 
 namespace makai {
 
