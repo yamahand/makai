@@ -35,11 +35,22 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/nlohmann/json.git
     GIT_TAG        v3.11.3
 )
+
+# GLM (OpenGL Mathematics) - header-only
+FetchContent_Declare(
+    glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG        1.0.2
+)
+
+# GLM options: disable library build (header-only mode)
+set(GLM_BUILD_LIBRARY OFF CACHE BOOL "" FORCE)
+set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 # SDL3_image: Use prebuilt binary (FetchContent had git submodule issues)
 set(SDL3_image_DIR "${CMAKE_SOURCE_DIR}/external/SDL3_image-3.4.0/cmake")
 find_package(SDL3_image REQUIRED CONFIG)
 
-FetchContent_MakeAvailable(SDL3 SDL3_ttf imgui json)
+FetchContent_MakeAvailable(SDL3 SDL3_ttf imgui json glm)
 
 # Create ImGui library with SDL3 backend
 add_library(imgui_sdl3 STATIC
@@ -80,6 +91,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/external/SDL3_image-3.4.0/lib/x64/SDL3_image.lib
     imgui_sdl3
     nlohmann_json::nlohmann_json
+    glm::glm
 )
 
 # Copy SDL3 and SDL3_ttf DLLs to executable directory (Windows only)
