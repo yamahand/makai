@@ -57,3 +57,6 @@ compile_commands.json
 
 # SDL3_image プリビルド版のみ除外（各自でダウンロードして配置）
 external/SDL3_image-3.4.0/
+
+# ImGui ユーザー設定（ウィンドウ位置・サイズなど）
+imgui.ini
