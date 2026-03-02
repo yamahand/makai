@@ -1,5 +1,6 @@
 #include "GameScene.hpp"
 #include "../core/Game.hpp"
+#include "../memory/GameObjectFactory.hpp"
 #include <string>
 #include <sstream>
 #include <iomanip>
@@ -8,7 +9,7 @@ namespace makai {
 
 GameScene::GameScene(Game& game)
     : Scene(game)
-    , m_player(std::make_unique<Player>())
+    , m_player(memory::GameObjectFactory::create<Player>())
 {
 }
 
@@ -20,6 +21,12 @@ void GameScene::onEnter() {
 
 void GameScene::onExit() {
     // セーブ処理などをここに追加
+
+    // プールにPlayerを返却
+    if (m_player) {
+        memory::GameObjectFactory::destroy(m_player);
+        m_player = nullptr;
+    }
 }
 
 void GameScene::handleEvent(const SDL_Event& event) {

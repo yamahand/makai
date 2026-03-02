@@ -99,6 +99,9 @@ void Game::render() {
     renderImGui();
 
     SDL_RenderPresent(renderer);
+
+    // フレームアロケーターをリセット
+    memoryManager().onFrameEnd();
 }
 
 void Game::renderImGui() {
@@ -120,6 +123,39 @@ void Game::renderImGui() {
         ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
         ImGui::End();
     }
+
+    // メモリ統計表示
+    ImGui::SetNextWindowPos(ImVec2(10, 50), ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("Memory Stats", nullptr,
+                    ImGuiWindowFlags_AlwaysAutoResize)) {
+        auto stats = memoryManager().getStats();
+
+        // フレームアロケーター
+        ImGui::Text("Frame Allocator:");
+        ImGui::Text("  %.2f / %.2f MB (%.1f%%)",
+                    stats.frameBytes / (1024.0f * 1024.0f),
+                    stats.frameCapacity / (1024.0f * 1024.0f),
+                    stats.frameUsageRatio * 100.0f);
+        ImGui::ProgressBar(stats.frameUsageRatio, ImVec2(-1, 0));
+
+        ImGui::Separator();
+
+        // シーンアロケーター
+        ImGui::Text("Scene Allocator:");
+        ImGui::Text("  %.2f / %.2f MB (%.1f%%)",
+                    stats.sceneBytes / (1024.0f * 1024.0f),
+                    stats.sceneCapacity / (1024.0f * 1024.0f),
+                    stats.sceneUsageRatio * 100.0f);
+        ImGui::ProgressBar(stats.sceneUsageRatio, ImVec2(-1, 0));
+
+        ImGui::Separator();
+
+        // 統計
+        ImGui::Text("Total Allocations:");
+        ImGui::Text("  Frame: %zu", stats.totalFrameAllocations);
+        ImGui::Text("  Scene: %zu", stats.totalSceneAllocations);
+    }
+    ImGui::End();
 
     m_imguiManager->render();
 }

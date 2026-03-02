@@ -25,7 +25,7 @@ private:
     void renderStatBar(SDL_Renderer* renderer, float x, float y, float w, float h,
                        int value, int maxValue, SDL_Color barColor);
 
-    std::unique_ptr<Player> m_player;
+    Player* m_player;  // PoolAllocatorで管理
 
     // ゲーム内時間管理
     float m_gameTime     = 8.0f;  // 08:00 スタート

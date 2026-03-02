@@ -5,6 +5,7 @@
 #include "ImGuiManager.hpp"
 #include "../utils/FontManager.hpp"
 #include "../utils/TextureManager.hpp"
+#include "../memory/MemoryManager.hpp"
 #include <memory>
 
 namespace makai {
@@ -18,11 +19,12 @@ public:
 
     void run();
 
-    SceneManager&   sceneManager()   { return m_sceneManager; }
-    Window&         window()         { return *m_window; }
-    FontManager&    fontManager()    { return m_fontManager; }
-    TextureManager& textureManager() { return *m_textureManager; }
-    const Config&   config()         const { return m_config; }
+    SceneManager&          sceneManager()   { return m_sceneManager; }
+    Window&                window()         { return *m_window; }
+    FontManager&           fontManager()    { return m_fontManager; }
+    TextureManager&        textureManager() { return *m_textureManager; }
+    memory::MemoryManager& memoryManager()  { return memory::MemoryManager::instance(); }
+    const Config&          config()         const { return m_config; }
 
 private:
     void processEvents();
