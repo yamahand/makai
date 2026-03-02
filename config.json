@@ -1,0 +1,28 @@
+{
+  "window": {
+    "title": "makai",
+    "width": 1280,
+    "height": 720,
+    "fullscreen": false,
+    "vsync": true
+  },
+  "fonts": {
+    "default": {
+      "path": "assets/fonts/DotGothic16/DotGothic16-Regular.ttf",
+      "size": 16
+    },
+    "large": {
+      "path": "assets/fonts/DotGothic16/DotGothic16-Regular.ttf",
+      "size": 32
+    }
+  },
+  "game": {
+    "time_scale": 0.5,
+    "starting_money": 10000,
+    "starting_day": 1
+  },
+  "debug": {
+    "show_fps": true,
+    "show_imgui_demo": false
+  }
+}

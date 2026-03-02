@@ -7,7 +7,7 @@
 
 namespace makai {
 
-// RAII wrapper for TTF_Font
+// TTF_Font の RAII ラッパー
 class Font {
 public:
     Font(TTF_Font* font) : m_font(font) {}
@@ -32,22 +32,22 @@ private:
     TTF_Font* m_font;
 };
 
-// FontManager: Manages font loading and text rendering
+// FontManager: フォントの読み込みとテキストレンダリングを管理
 class FontManager {
 public:
     FontManager();
     ~FontManager();
 
-    // Load a font file with specified size
+    // 指定サイズでフォントファイルを読み込む
     bool loadFont(const std::string& name, const std::string& path, int size);
 
-    // Get loaded font by name
+    // 名前から読み込み済みのフォントを取得
     TTF_Font* getFont(const std::string& name) const;
 
-    // Render text to a surface (caller must free the surface)
+    // テキストを Surface にレンダリング（呼び出し元が解放責任）
     SDL_Surface* renderText(const std::string& fontName, const std::string& text, SDL_Color color);
 
-    // Render text to a texture (caller must destroy the texture)
+    // テキストを Texture にレンダリング（呼び出し元が破棄責任）
     SDL_Texture* renderTextTexture(SDL_Renderer* renderer, const std::string& fontName,
                                     const std::string& text, SDL_Color color);
 

@@ -34,7 +34,7 @@ public:
 
     StateMachine& stateMachine() { return m_stateMachine; }
 
-    // Get current state name for HUD display
+    // HUD \u8868\u793a\u7528\u306b\u73fe\u5728\u306e\u30b9\u30c6\u30fc\u30c8\u540d\u3092\u53d6\u5f97
     const char* getCurrentStateName() const;
 
 private:

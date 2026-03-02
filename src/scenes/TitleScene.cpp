@@ -24,11 +24,11 @@ void TitleScene::update(float deltaTime) {
 }
 
 void TitleScene::render(SDL_Renderer* renderer) {
-    // Background
+    // 背景
     SDL_SetRenderDrawColor(renderer, 20, 20, 60, 255);
     SDL_RenderClear(renderer);
 
-    // Title text
+    // タイトルテキスト
     SDL_Color white = {255, 255, 255, 255};
     SDL_Texture* titleTexture = m_game.fontManager().renderTextTexture(
         renderer, "large", "MAKAI", white
@@ -46,7 +46,7 @@ void TitleScene::render(SDL_Renderer* renderer) {
         SDL_DestroyTexture(titleTexture);
     }
 
-    // "Press ENTER" blinking text (toggle every 0.5 seconds)
+    // 「ENTER を押してください」点滅テキスト（0.5秒ごとに切り替え）
     if (static_cast<int>(m_timer * 2) % 2 == 0) {
         SDL_Texture* promptTexture = m_game.fontManager().renderTextTexture(
             renderer, "default", "Press ENTER to Start", white

@@ -1,19 +1,45 @@
 #include "Game.hpp"
 #include "../scenes/TitleScene.hpp"
 #include <SDL3/SDL.h>
+#include <imgui.h>
 #include <stdexcept>
 
 namespace makai {
 
 Game::Game() {
+    // 設定ファイルを読み込む
+    m_config = Config::load("config.json");
+
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
         throw std::runtime_error(std::string("SDL_Init failed: ") + SDL_GetError());
     }
-    m_window = std::make_unique<Window>("makai", SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    // Load default font
-    m_fontManager.loadFont("default", "assets/fonts/DotGothic16/DotGothic16-Regular.ttf", 16);
-    m_fontManager.loadFont("large", "assets/fonts/DotGothic16/DotGothic16-Regular.ttf", 32);
+    // 設定からウィンドウを生成
+    m_window = std::make_unique<Window>(
+        m_config.window.title,
+        m_config.window.width,
+        m_config.window.height
+    );
+
+    // ImGui を初期化
+    m_imguiManager = std::make_unique<ImGuiManager>(
+        m_window->getSDLWindow(),
+        m_window->getRenderer()
+    );
+
+    // TextureManager を初期化
+    m_textureManager = std::make_unique<TextureManager>(m_window->getRenderer());
+
+    // 設定からフォントを読み込む
+    m_fontManager.loadFont("default",
+                          m_config.defaultFont.path,
+                          m_config.defaultFont.size);
+    m_fontManager.loadFont("large",
+                          m_config.largeFont.path,
+                          m_config.largeFont.size);
+
+    // テクスチャを読み込む
+    m_textureManager->loadTexture("test", "assets/textures/CustomUVChecker_byValle_1K.png");
 
     // 最初のシーンをセット
     m_sceneManager.push(std::make_unique<TitleScene>(*this));
@@ -48,6 +74,9 @@ void Game::run() {
 void Game::processEvents() {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
+        // ImGui にイベント処理を優先させる
+        m_imguiManager->processEvent(event);
+
         if (event.type == SDL_EVENT_QUIT) {
             m_running = false;
         }
@@ -66,7 +95,33 @@ void Game::render() {
 
     m_sceneManager.render(renderer);
 
+    // ImGui をレンダリング
+    renderImGui();
+
     SDL_RenderPresent(renderer);
+}
+
+void Game::renderImGui() {
+    m_imguiManager->newFrame();
+
+    // 設定に応じて ImGui デモウィンドウを表示
+    if (m_config.debug.showImGuiDemo) {
+        ImGui::ShowDemoWindow(&m_config.debug.showImGuiDemo);
+    }
+
+    // 設定に応じて FPS カウンターを表示
+    if (m_config.debug.showFPS) {
+        ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
+        ImGui::Begin("Debug Info", nullptr,
+                    ImGuiWindowFlags_NoTitleBar |
+                    ImGuiWindowFlags_NoResize |
+                    ImGuiWindowFlags_AlwaysAutoResize |
+                    ImGuiWindowFlags_NoMove);
+        ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+        ImGui::End();
+    }
+
+    m_imguiManager->render();
 }
 
 } // namespace makai
