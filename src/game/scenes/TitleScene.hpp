@@ -3,9 +3,9 @@
 
 namespace makai {
 
-class TitleScene : public Scene {
+class TitleScene : public mk::Scene {
 public:
-    explicit TitleScene(Game& game);
+    explicit TitleScene(mk::Game& game);
 
     void handleEvent(const SDL_Event& event) override;
     void update(float deltaTime) override;

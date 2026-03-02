@@ -1,7 +1,7 @@
 #pragma once
 #include <SDL3/SDL.h>
 
-namespace makai {
+namespace mk {
 
 // 全ゲームオブジェクトの基底クラス
 class GameObject {
@@ -25,4 +25,4 @@ protected:
     bool  m_alive = true;
 };
 
-} // namespace makai
+} // namespace mk

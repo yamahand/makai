@@ -2,7 +2,7 @@
 #include <SDL3/SDL.h>
 #include <string>
 
-namespace makai {
+namespace mk {
 
 class Window {
 public:
@@ -23,4 +23,4 @@ private:
     int           m_height;
 };
 
-} // namespace makai
+} // namespace mk

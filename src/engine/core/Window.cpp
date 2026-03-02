@@ -1,7 +1,7 @@
 #include "Window.hpp"
 #include <stdexcept>
 
-namespace makai {
+namespace mk {
 
 Window::Window(const std::string& title, int width, int height)
     : m_width(width), m_height(height)
@@ -24,4 +24,4 @@ Window::~Window()
     if (m_window)   SDL_DestroyWindow(m_window);
 }
 
-} // namespace makai
+} // namespace mk

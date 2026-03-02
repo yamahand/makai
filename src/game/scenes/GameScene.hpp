@@ -8,9 +8,9 @@ namespace makai {
 
 // ゲームメインシーン
 // 「俺に働けって言われても」風：1日のスケジュール・行動選択・ステータス管理
-class GameScene : public Scene {
+class GameScene : public mk::Scene {
 public:
-    explicit GameScene(Game& game);
+    explicit GameScene(mk::Game& game);
 
     void handleEvent(const SDL_Event& event) override;
     void update(float deltaTime) override;

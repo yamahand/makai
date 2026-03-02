@@ -4,7 +4,7 @@
 #include <iostream>
 #include <SDL3/SDL_log.h>
 
-namespace makai {
+namespace mk {
 
 Config Config::load(const std::string& path) {
     Config config;
@@ -101,4 +101,4 @@ void Config::save(const std::string& path) const {
     }
 }
 
-} // namespace makai
+} // namespace mk

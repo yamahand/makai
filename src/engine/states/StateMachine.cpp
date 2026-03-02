@@ -1,6 +1,6 @@
 #include "StateMachine.hpp"
 
-namespace makai {
+namespace mk {
 
 void StateMachine::changeState(std::unique_ptr<State> newState) {
     if (m_current) m_current->onExit();
@@ -16,4 +16,4 @@ void StateMachine::update(float deltaTime) {
     if (m_current) m_current->update(deltaTime);
 }
 
-} // namespace makai
+} // namespace mk

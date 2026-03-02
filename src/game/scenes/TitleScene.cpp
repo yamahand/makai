@@ -4,8 +4,8 @@
 
 namespace makai {
 
-TitleScene::TitleScene(Game& game)
-    : Scene(game)
+TitleScene::TitleScene(mk::Game& game)
+    : mk::Scene(game)
 {
 }
 

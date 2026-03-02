@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <memory>
 
-namespace makai {
+namespace mk {
 
 // TTF_Font の RAII ラッパー
 class Font {
@@ -55,4 +55,4 @@ private:
     std::unordered_map<std::string, std::unique_ptr<Font>> m_fonts;
 };
 
-} // namespace makai
+} // namespace mk

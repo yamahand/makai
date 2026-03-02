@@ -21,7 +21,7 @@ struct PlayerStats {
     void addStress(int v);
 };
 
-class Player : public GameObject {
+class Player : public mk::GameObject {
 public:
     Player();
 
@@ -32,14 +32,14 @@ public:
     PlayerStats&       stats()       { return m_stats; }
     const PlayerStats& stats() const { return m_stats; }
 
-    StateMachine& stateMachine() { return m_stateMachine; }
+    mk::StateMachine& stateMachine() { return m_stateMachine; }
 
     // HUD \u8868\u793a\u7528\u306b\u73fe\u5728\u306e\u30b9\u30c6\u30fc\u30c8\u540d\u3092\u53d6\u5f97
     const char* getCurrentStateName() const;
 
 private:
-    PlayerStats  m_stats;
-    StateMachine m_stateMachine;
+    PlayerStats       m_stats;
+    mk::StateMachine  m_stateMachine;
 };
 
 } // namespace makai

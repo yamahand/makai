@@ -2,7 +2,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace makai::memory {
+namespace mk::memory {
 
 /// LinearAllocator（バンプアロケーター）
 ///
@@ -60,4 +60,4 @@ private:
     size_t m_offset;   ///< 現在のオフセット（バイト）
 };
 
-} // namespace makai::memory
+} // namespace mk::memory

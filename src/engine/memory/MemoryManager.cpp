@@ -1,7 +1,7 @@
 #include "MemoryManager.hpp"
 #include <SDL3/SDL_log.h>
 
-namespace makai::memory {
+namespace mk::memory {
 
 MemoryManager::MemoryManager()
     : m_frameAllocator(4 * 1024 * 1024)  // 4MB
@@ -66,4 +66,4 @@ MemoryManager::Stats MemoryManager::getStats() const {
     return stats;
 }
 
-} // namespace makai::memory
+} // namespace mk::memory

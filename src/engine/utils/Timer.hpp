@@ -1,6 +1,6 @@
 #pragma once
 
-namespace makai {
+namespace mk {
 
 // 経過時間カウンター（クールダウン・イベントトリガー用）
 class Timer {
@@ -37,4 +37,4 @@ private:
     bool  m_finished = false;
 };
 
-} // namespace makai
+} // namespace mk

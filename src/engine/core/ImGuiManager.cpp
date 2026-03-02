@@ -3,7 +3,7 @@
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_sdlrenderer3.h>
 
-namespace makai {
+namespace mk {
 
 ImGuiManager::ImGuiManager(SDL_Window* window, SDL_Renderer* renderer)
     : m_renderer(renderer)
@@ -44,4 +44,4 @@ bool ImGuiManager::processEvent(const SDL_Event& event) {
     return ImGui_ImplSDL3_ProcessEvent(&event);
 }
 
-} // namespace makai
+} // namespace mk

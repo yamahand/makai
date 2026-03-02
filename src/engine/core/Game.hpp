@@ -8,7 +8,7 @@
 #include "../memory/MemoryManager.hpp"
 #include <memory>
 
-namespace makai {
+namespace mk {
 
 class Game {
 public:
@@ -41,4 +41,4 @@ private:
     bool                            m_running = false;
 };
 
-} // namespace makai
+} // namespace mk
