@@ -1,7 +1,7 @@
 #include "TextureManager.hpp"
 #include <SDL3/SDL_log.h>
 
-namespace makai {
+namespace mk {
 
 TextureManager::TextureManager(SDL_Renderer* renderer)
     : m_renderer(renderer)
@@ -82,4 +82,4 @@ void TextureManager::renderTexture(const std::string& name, const SDL_FRect* src
     SDL_RenderTexture(m_renderer, texture, srcRect, dstRect);
 }
 
-} // namespace makai
+} // namespace mk

@@ -4,7 +4,7 @@
 struct SDL_Window;
 struct SDL_Renderer;
 
-namespace makai {
+namespace mk {
 
 class ImGuiManager {
 public:
@@ -28,4 +28,4 @@ private:
     SDL_Renderer* m_renderer;
 };
 
-} // namespace makai
+} // namespace mk

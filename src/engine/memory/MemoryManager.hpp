@@ -5,7 +5,7 @@
 #include <typeindex>
 #include <memory>
 
-namespace makai::memory {
+namespace mk::memory {
 
 /// MemoryManager - メモリアロケーターの中央管理
 ///
@@ -113,4 +113,4 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
     return holder->pool;
 }
 
-} // namespace makai::memory
+} // namespace mk::memory

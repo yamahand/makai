@@ -5,7 +5,7 @@
 #include <imgui.h>
 #include <stdexcept>
 
-namespace makai {
+namespace mk {
 
 Game::Game() {
     // 設定ファイルを読み込む
@@ -43,7 +43,7 @@ Game::Game() {
     m_textureManager->loadTexture("test", "assets/textures/CustomUVChecker_byValle_1K.png");
 
     // 最初のシーンをセット
-    m_sceneManager.push(std::make_unique<TitleScene>(*this));
+    m_sceneManager.push(std::make_unique<makai::TitleScene>(*this));
     m_sceneManager.applyPendingChanges();
 }
 
@@ -160,7 +160,7 @@ void Game::renderImGui() {
 
         // プールアロケーター
         ImGui::Text("Object Pools:");
-        auto& playerPool = memoryManager().getPool<Player>();
+        auto& playerPool = memoryManager().getPool<makai::Player>();
         ImGui::Text("  Player: %zu / %zu (%.1f%%)",
                     playerPool.getUsedCount(),
                     playerPool.getCapacity(),
@@ -172,4 +172,4 @@ void Game::renderImGui() {
     m_imguiManager->render();
 }
 
-} // namespace makai
+} // namespace mk

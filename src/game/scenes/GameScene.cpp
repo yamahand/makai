@@ -7,9 +7,9 @@
 
 namespace makai {
 
-GameScene::GameScene(Game& game)
-    : Scene(game)
-    , m_player(memory::GameObjectFactory::create<Player>())
+GameScene::GameScene(mk::Game& game)
+    : mk::Scene(game)
+    , m_player(mk::memory::GameObjectFactory::create<Player>())
 {
     // シーンアロケーター使用例:
     // シーン固有の一時データをシーンアロケーターから割り当て可能
@@ -32,7 +32,7 @@ void GameScene::onExit() {
 
     // プールにPlayerを返却
     if (m_player) {
-        memory::GameObjectFactory::destroy(m_player);
+        mk::memory::GameObjectFactory::destroy(m_player);
         m_player = nullptr;
     }
 }

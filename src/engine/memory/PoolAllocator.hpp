@@ -4,7 +4,7 @@
 #include <array>
 #include <SDL3/SDL_log.h>
 
-namespace makai::memory {
+namespace mk::memory {
 
 /// PoolAllocator - 固定サイズオブジェクトプール
 ///
@@ -169,4 +169,4 @@ bool PoolAllocator<T, PoolSize>::ownsBlock(const T* ptr) const {
     return bytePtr >= poolStart && bytePtr < poolEnd;
 }
 
-} // namespace makai::memory
+} // namespace mk::memory

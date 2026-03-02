@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <memory>
 
-namespace makai {
+namespace mk {
 
 // SDL_Texture の RAII ラッパー
 class Texture {
@@ -57,4 +57,4 @@ private:
     std::unordered_map<std::string, std::unique_ptr<Texture>> m_textures;
 };
 
-} // namespace makai
+} // namespace mk

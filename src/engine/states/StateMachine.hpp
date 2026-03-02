@@ -2,7 +2,7 @@
 #include <memory>
 #include <SDL3/SDL.h>
 
-namespace makai {
+namespace mk {
 
 // ステートの基底クラス
 class State {
@@ -30,4 +30,4 @@ private:
     std::unique_ptr<State> m_current;
 };
 
-} // namespace makai
+} // namespace mk

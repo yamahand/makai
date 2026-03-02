@@ -6,7 +6,7 @@ namespace makai {
 class Player;
 
 // ---- Idle（待機中・行動選択待ち） ----
-class PlayerIdleState : public State {
+class PlayerIdleState : public mk::State {
 public:
     explicit PlayerIdleState(Player& player) : m_player(player) {}
     void onEnter() override;
@@ -19,7 +19,7 @@ private:
 };
 
 // ---- Working（アルバイト中） ----
-class PlayerWorkingState : public State {
+class PlayerWorkingState : public mk::State {
 public:
     explicit PlayerWorkingState(Player& player) : m_player(player) {}
     void onEnter() override;
@@ -33,7 +33,7 @@ private:
 };
 
 // ---- Resting（休憩・睡眠） ----
-class PlayerRestingState : public State {
+class PlayerRestingState : public mk::State {
 public:
     explicit PlayerRestingState(Player& player) : m_player(player) {}
     void onEnter() override;
@@ -47,7 +47,7 @@ private:
 };
 
 // ---- Eating（食事中） ----
-class PlayerEatingState : public State {
+class PlayerEatingState : public mk::State {
 public:
     explicit PlayerEatingState(Player& player) : m_player(player) {}
     void onEnter() override;

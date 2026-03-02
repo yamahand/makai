@@ -3,7 +3,7 @@
 #include <cstring>
 #include <SDL3/SDL_log.h>
 
-namespace makai::memory {
+namespace mk::memory {
 
 LinearAllocator::LinearAllocator(size_t capacity)
     : m_buffer(nullptr)
@@ -76,4 +76,4 @@ size_t LinearAllocator::alignForward(size_t addr, size_t alignment) {
     return (addr + (alignment - 1)) & ~(alignment - 1);
 }
 
-} // namespace makai::memory
+} // namespace mk::memory

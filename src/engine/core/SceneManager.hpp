@@ -4,7 +4,7 @@
 #include <vector>
 #include <SDL3/SDL.h>
 
-namespace makai {
+namespace mk {
 
 class Scene;
 
@@ -44,4 +44,4 @@ private:
     std::vector<PendingChange> m_pending;
 };
 
-} // namespace makai
+} // namespace mk

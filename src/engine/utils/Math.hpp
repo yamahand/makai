@@ -2,7 +2,7 @@
 #include <glm/glm.hpp>
 #include <SDL3/SDL.h>
 
-namespace makai {
+namespace mk {
 
 /// GLM と SDL3 型の変換ヘルパー関数
 namespace math {
@@ -96,4 +96,4 @@ inline glm::vec2 clamp(const glm::vec2& value, const glm::vec2& min, const glm::
 
 } // namespace math
 
-} // namespace makai
+} // namespace mk

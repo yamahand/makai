@@ -3,7 +3,7 @@
 
 int main(int /*argc*/, char* /*argv*/[]) {
     try {
-        makai::Game game;
+        mk::Game game;
         game.run();
     } catch (const std::exception& e) {
         std::cerr << "[ERROR] " << e.what() << std::endl;

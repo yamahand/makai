@@ -1,7 +1,7 @@
 #include "FontManager.hpp"
 #include <SDL3/SDL_log.h>
 
-namespace makai {
+namespace mk {
 
 FontManager::FontManager() {
     if (!TTF_Init()) {
@@ -64,4 +64,4 @@ SDL_Texture* FontManager::renderTextTexture(SDL_Renderer* renderer, const std::s
     return texture;
 }
 
-} // namespace makai
+} // namespace mk

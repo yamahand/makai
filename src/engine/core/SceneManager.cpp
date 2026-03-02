@@ -2,7 +2,7 @@
 #include "../scenes/Scene.hpp"
 #include "../memory/MemoryManager.hpp"
 
-namespace makai {
+namespace mk {
 
 void SceneManager::push(std::unique_ptr<Scene> scene) {
     m_pending.push_back({ Command::Push, std::move(scene) });
@@ -65,4 +65,4 @@ void SceneManager::applyPendingChanges() {
     }
 }
 
-} // namespace makai
+} // namespace mk

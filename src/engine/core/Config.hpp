@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-namespace makai {
+namespace mk {
 
 // ウィンドウ設定
 struct WindowConfig {
@@ -48,4 +48,4 @@ public:
     Config() = default;
 };
 
-} // namespace makai
+} // namespace mk

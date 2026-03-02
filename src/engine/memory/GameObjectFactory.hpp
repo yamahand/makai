@@ -3,7 +3,7 @@
 #include <utility>
 #include <SDL3/SDL_log.h>
 
-namespace makai::memory {
+namespace mk::memory {
 
 /// GameObjectFactory - GameObject生成/破棄ファクトリー
 ///
@@ -142,4 +142,4 @@ public:
     GameObjectFactory& operator=(const GameObjectFactory&) = delete;
 };
 
-} // namespace makai::memory
+} // namespace mk::memory

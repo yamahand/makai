@@ -1,7 +1,7 @@
 #pragma once
 #include <SDL3/SDL.h>
 
-namespace makai {
+namespace mk {
 
 class Game;
 
@@ -26,4 +26,4 @@ protected:
     Game& m_game;
 };
 
-} // namespace makai
+} // namespace mk

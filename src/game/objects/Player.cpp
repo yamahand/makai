@@ -17,7 +17,7 @@ void PlayerStats::addStress(int v) { stress = clamp100(stress + v); }
 // ---- Player ----
 
 Player::Player()
-    : GameObject(100.0f, 300.0f)
+    : mk::GameObject(100.0f, 300.0f)
 {
     // 初期ステート: Idle
     m_stateMachine.changeState(std::make_unique<PlayerIdleState>(*this));
