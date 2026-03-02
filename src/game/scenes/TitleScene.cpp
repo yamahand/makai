@@ -1,6 +1,6 @@
 #include "TitleScene.hpp"
 #include "GameScene.hpp"
-#include "../core/Game.hpp"
+#include "engine/core/Game.hpp"
 
 namespace makai {
 

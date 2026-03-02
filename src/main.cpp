@@ -1,4 +1,4 @@
-#include "core/Game.hpp"
+#include "engine/core/Game.hpp"
 #include <iostream>
 
 int main(int /*argc*/, char* /*argv*/[]) {

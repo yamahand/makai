@@ -1,6 +1,6 @@
 #pragma once
-#include "Scene.hpp"
-#include "../objects/Player.hpp"
+#include "engine/scenes/Scene.hpp"
+#include "game/objects/Player.hpp"
 #include <vector>
 #include <memory>
 

@@ -1,5 +1,5 @@
 #pragma once
-#include "StateMachine.hpp"
+#include "engine/states/StateMachine.hpp"
 
 namespace makai {
 
