@@ -35,13 +35,16 @@ private:
     // Engine固有のデバッグUI（FPS・メモリ統計）を描画する
     void renderDebugImGui();
 
+    // 破棄順は宣言の逆順になるため、参照先を先に宣言する
+    // m_renderer は m_fontManager / m_textureManager への参照を保持するため、
+    // それらより後に宣言し、先に破棄されるようにする
     Config                          m_config;
     std::unique_ptr<Window>         m_window;
     std::unique_ptr<ImGuiManager>   m_imguiManager;
-    std::unique_ptr<Renderer>       m_renderer;
+    FontManager                     m_fontManager;        // m_renderer より先に宣言（後に破棄）
+    std::unique_ptr<TextureManager> m_textureManager;     // m_renderer より先に宣言（後に破棄）
+    std::unique_ptr<Renderer>       m_renderer;           // 上2つの参照を保持するため最後に破棄
     SceneManager                    m_sceneManager;
-    FontManager                     m_fontManager;
-    std::unique_ptr<TextureManager> m_textureManager;
     bool                            m_running = false;
 };
 
