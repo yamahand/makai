@@ -4,20 +4,56 @@
 
 namespace mk::memory {
 
-/// FreeListAllocator（First-Fit フリーリストアロケーター）
+// ─────────────────────────────────────────────
+// 共通ブロックヘッダ（ポリシー間で共有）
+// ─────────────────────────────────────────────
+
+/// 各ブロックの先頭に埋め込まれるヘッダ
+struct FreeListBlockHeader {
+    size_t              size;          ///< ペイロードサイズ（ヘッダ含まず）
+    bool                isFree;
+    FreeListBlockHeader* prevPhysical; ///< 前の物理ブロック（コアレス用）
+};
+
+/// findBlock の戻り値（ヘッダと実際に必要なサイズをまとめる）
+struct FreeListSearchResult {
+    FreeListBlockHeader* header  = nullptr;
+    size_t               needed  = 0;  ///< アライメントパディング込みの確保サイズ
+};
+
+// ─────────────────────────────────────────────
+// 検索ポリシー
+// ─────────────────────────────────────────────
+
+/// First-Fit ポリシー: 先頭から走査して最初に合うブロックを使用する
+struct FirstFitPolicy {
+    static FreeListSearchResult findBlock(FreeListBlockHeader* first,
+                                          size_t size, size_t alignment,
+                                          const std::byte* bufferEnd);
+};
+
+/// Best-Fit ポリシー: 全フリーブロックを走査し、最小の余剰で収まるブロックを使用する
+struct BestFitPolicy {
+    static FreeListSearchResult findBlock(FreeListBlockHeader* first,
+                                          size_t size, size_t alignment,
+                                          const std::byte* bufferEnd);
+};
+
+// ─────────────────────────────────────────────
+// FreeListAllocator
+// ─────────────────────────────────────────────
+
+/// FreeListAllocator（ポリシーテンプレート版）
 ///
 /// 可変サイズの割り当てと個別解放をサポートする汎用アロケーター。
-/// 解放時に隣接するフリーブロックを結合（コアレス）することで断片化を軽減する。
+/// SearchPolicy を切り替えることで First-Fit / Best-Fit を選択できる。
 ///
-/// 方針:
-/// - ブロックヘッダをペイロード直前に埋め込む
-/// - First-Fit: 先頭から走査して最初に合うブロックを使用
-/// - 分割: 余剰が sizeof(BlockHeader) + 最小ペイロード以上なら二分割
-/// - コアレス: 解放時に前後の物理ブロックが free であれば結合
+/// 解放時に隣接するフリーブロックを結合（コアレス）して断片化を軽減する。
 ///
-/// 用途:
-/// - 動的かつ様々なサイズのオブジェクト群（非フレーム寿命）
-/// - STL コンテナのバッキングアロケーターとして
+/// 分割: 余剰が sizeof(FreeListBlockHeader) + 最小ペイロード以上なら二分割。
+///
+/// @tparam SearchPolicy  FirstFitPolicy（デフォルト）または BestFitPolicy
+template<typename SearchPolicy = FirstFitPolicy>
 class FreeListAllocator {
 public:
     /// @param capacity バッキングバッファのバイト数
@@ -25,9 +61,6 @@ public:
     ~FreeListAllocator();
 
     /// メモリを割り当てる
-    /// @param size  割り当てるバイト数
-    /// @param alignment アライメント（デフォルト: 16バイト）
-    /// @return 割り当てられたメモリ（失敗時は nullptr）
     void* allocate(size_t size, size_t alignment = 16);
 
     /// メモリを解放し、隣接フリーブロックと結合する
@@ -36,48 +69,35 @@ public:
     /// 全ブロックをリセット（デストラクタは呼ばれない）
     void reset();
 
-    /// 現在使用中のペイロードバイト数を取得
-    size_t getUsedBytes()        const { return m_usedBytes; }
-
-    /// バッキングバッファの総容量を取得
-    size_t getCapacity()         const { return m_capacity; }
-
-    /// 使用率を取得（0.0〜1.0）
-    float  getUsageRatio()       const {
+    size_t getUsedBytes()       const { return m_usedBytes; }
+    size_t getCapacity()        const { return m_capacity; }
+    float  getUsageRatio()      const {
         return m_capacity > 0 ? static_cast<float>(m_usedBytes) / m_capacity : 0.0f;
     }
+    size_t getAllocationCount() const { return m_allocationCount; }
+    size_t getFreeBlockCount()  const;
 
-    /// アクティブな割り当て数を取得
-    size_t getAllocationCount()  const { return m_allocationCount; }
-
-    /// フリーブロック数を取得（デバッグ・断片化確認用）
-    size_t getFreeBlockCount()   const;
-
-    // コピー禁止
     FreeListAllocator(const FreeListAllocator&)            = delete;
     FreeListAllocator& operator=(const FreeListAllocator&) = delete;
 
 private:
-    /// 各ブロックの先頭に置かれるヘッダ
-    struct BlockHeader {
-        size_t       size;          ///< ペイロードサイズ（ヘッダ含まず）
-        bool         isFree;
-        BlockHeader* prevPhysical;  ///< 前の物理ブロック（コアレス用）
-    };
+    using BlockHeader = FreeListBlockHeader;
 
-    /// ブロックの次の物理ブロックを返す（範囲外なら nullptr）
     BlockHeader* nextPhysical(BlockHeader* header) const;
+    void         splitBlock(BlockHeader* header, size_t size);
+    void         mergeWithNext(BlockHeader* header);
 
-    /// 指定ブロックを分割し、余剰を新しいフリーブロックにする
-    void splitBlock(BlockHeader* header, size_t size);
-
-    /// header とその次の物理ブロックを結合する（両方 free のこと）
-    void mergeWithNext(BlockHeader* header);
-
-    void*  m_buffer;            ///< バッキングバッファ
-    size_t m_capacity;          ///< バッファ総容量
-    size_t m_usedBytes;         ///< 使用中ペイロードバイト数
-    size_t m_allocationCount;   ///< アクティブ割り当て数
+    void*  m_buffer;
+    size_t m_capacity;
+    size_t m_usedBytes;
+    size_t m_allocationCount;
 };
+
+// ─────────────────────────────────────────────
+// Convenience aliases
+// ─────────────────────────────────────────────
+
+using FirstFitAllocator = FreeListAllocator<FirstFitPolicy>;
+using BestFitAllocator  = FreeListAllocator<BestFitPolicy>;
 
 } // namespace mk::memory

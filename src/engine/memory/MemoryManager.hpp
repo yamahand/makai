@@ -31,8 +31,8 @@ public:
     LinearAllocator& sceneAllocator() { return m_sceneAllocator; }
 
     /// ヒープアロケーターを取得
-    /// 可変サイズ・個別解放に対応した汎用アロケーター
-    FreeListAllocator& heapAllocator() { return m_heapAllocator; }
+    /// 可変サイズ・個別解放に対応した汎用アロケーター（First-Fit）
+    FirstFitAllocator& heapAllocator() { return m_heapAllocator; }
 
     /// 型Tのプールアロケーターを取得
     /// 初回アクセス時に自動的に生成される
@@ -94,7 +94,7 @@ private:
     // アロケーター
     LinearAllocator   m_frameAllocator; // 4MB
     LinearAllocator   m_sceneAllocator; // 16MB
-    FreeListAllocator m_heapAllocator;  // 32MB
+    FirstFitAllocator m_heapAllocator;  // 32MB
 
     // プールアロケーターマップ（型IDで管理）
     std::unordered_map<std::type_index, std::unique_ptr<IPoolBase>> m_pools;
