@@ -48,13 +48,13 @@ public:
     /// シーン変更時にリセットされる
     LinearAllocator& sceneAllocator() { return *m_sceneAllocator; }
 
-    /// ヒープアロケーターを取得（後方互換）
-    /// 可変サイズ・個別解放に対応した汎用アロケーター（First-Fit）
-    FirstFitAllocator& heapAllocator() { return m_heapResource->getAllocator(); }
+    /// ヒープアロケーターを取得
+    /// 可変サイズ・個別解放に対応した汎用アロケーター（マスター FreeList の残余領域）
+    FirstFitAllocator& heapAllocator() { return m_masterResource->getAllocator(); }
 
     /// ヒープの pmr リソースを取得
     /// std::pmr コンテナへそのまま渡せる
-    std::pmr::memory_resource* heapMemoryResource() { return m_heapResource.get(); }
+    std::pmr::memory_resource* heapMemoryResource() { return m_masterResource.get(); }
 
     /// 型Tのプールアロケーターを取得
     /// 初回アクセス時に自動的に生成される
@@ -84,12 +84,14 @@ public:
         size_t sceneCapacity;
         float  sceneUsageRatio;
 
-        // ヒープアロケーター（FreeList）
+        // ヒープ（FreeList）
         size_t heapBytes;
-        size_t heapCapacity;
+        size_t heapCapacity;     ///< サブアロケーター予約分を除いた実効容量
         float  heapUsageRatio;
         size_t heapAllocationCount;
         size_t heapFreeBlockCount;
+        size_t masterTotalBytes;   ///< マスターバッファ全体の使用量（デバッグ用）
+        size_t masterTotalCapacity;
 
         // 総割り当て回数（デバッグ用）
         size_t totalFrameAllocations;
@@ -122,18 +124,21 @@ private:
     void*  m_masterBuffer = nullptr;
     size_t m_masterSize   = 0;
 
-    // 各アロケーター（init() 後に有効）
-    std::unique_ptr<LinearAllocator>        m_frameAllocator;
-    std::unique_ptr<DoubleFrameAllocator>   m_doubleFrameAllocator;
-    std::unique_ptr<LinearAllocator>        m_sceneAllocator;
-    std::unique_ptr<FirstFitMemoryResource> m_heapResource;
+    /// マスター FreeList（バッファ全体を管理し、各アロケーターにバッファを払い出す）
+    std::unique_ptr<FirstFitMemoryResource> m_masterResource;
+
+    // 各アロケーター（マスター FreeList からバッファを借りる）
+    std::unique_ptr<LinearAllocator>      m_frameAllocator;
+    std::unique_ptr<DoubleFrameAllocator> m_doubleFrameAllocator;
+    std::unique_ptr<LinearAllocator>      m_sceneAllocator;
 
     // プールアロケーターマップ（型IDで管理）
     std::unordered_map<std::type_index, std::unique_ptr<IPoolBase>> m_pools;
 
     // 統計情報
-    size_t m_totalFrameAllocations = 0;
-    size_t m_totalSceneAllocations = 0;
+    size_t m_totalFrameAllocations    = 0;
+    size_t m_totalSceneAllocations    = 0;
+    size_t m_subAllocatorReservedBytes = 0; ///< サブアロケーターが予約した合計バイト数
 };
 
 // ========================================

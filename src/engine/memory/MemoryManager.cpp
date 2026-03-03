@@ -23,33 +23,47 @@ void MemoryManager::init(const mk::MemoryConfig& config) {
 
     if (!mgr.m_masterBuffer) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "MemoryManager: Failed to allocate master buffer (%zu MB)",
+                     "MemoryManager: マスターバッファの確保に失敗 (%zu MB)",
                      totalSize / (1024 * 1024));
         return;
     }
 
     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
-                "MemoryManager: Master buffer %zu MB allocated at %p",
+                "MemoryManager: マスターバッファ %zu MB を %p に確保",
                 totalSize / (1024 * 1024), mgr.m_masterBuffer);
 
-    // マスターバッファを各アロケーターに分配
-    auto* p = static_cast<std::byte*>(mgr.m_masterBuffer);
-    mgr.m_frameAllocator = std::make_unique<LinearAllocator>(p, frameSize);
-    p += frameSize;
+    // マスター FreeList がバッファ全体を管理する
+    mgr.m_masterResource = std::make_unique<FirstFitMemoryResource>(mgr.m_masterBuffer, totalSize);
+    auto& master = mgr.m_masterResource->getAllocator();
+
+    // 各サブアロケーターはマスター FreeList からバッファを借りる
+    // （払い出したバッファは永続使用のため deallocate しない）
+    void* frameBuf   = master.allocate(frameSize,   alignof(std::max_align_t));
+    mgr.m_frameAllocator = std::make_unique<LinearAllocator>(frameBuf, frameSize);
+
+    void* dframe0 = master.allocate(doubleFrameSize, alignof(std::max_align_t));
+    void* dframe1 = master.allocate(doubleFrameSize, alignof(std::max_align_t));
     mgr.m_doubleFrameAllocator = std::make_unique<DoubleFrameAllocator>(
-        p, doubleFrameSize, p + doubleFrameSize, doubleFrameSize);
-    p += doubleFrameSize * 2;
-    mgr.m_sceneAllocator = std::make_unique<LinearAllocator>(p, sceneSize);
-    p += sceneSize;
-    mgr.m_heapResource   = std::make_unique<FirstFitMemoryResource>(p, heapSize);
+        dframe0, doubleFrameSize, dframe1, doubleFrameSize);
+
+    void* sceneBuf = master.allocate(sceneSize, alignof(std::max_align_t));
+    mgr.m_sceneAllocator = std::make_unique<LinearAllocator>(sceneBuf, sceneSize);
+
+    // サブアロケーター予約分を記録（ヒープ統計の補正に使う）
+    mgr.m_subAllocatorReservedBytes = master.getUsedBytes();
+
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                "MemoryManager: サブアロケーター予約 %zu MB / ヒープ残余 %zu MB",
+                mgr.m_subAllocatorReservedBytes / (1024 * 1024),
+                (totalSize - mgr.m_subAllocatorReservedBytes) / (1024 * 1024));
 }
 
 MemoryManager::~MemoryManager() {
-    // unique_ptr が各アロケーターを先に破棄する（外部バッファは free しない）
+    // サブアロケーターを先に破棄（外部バッファなので free は呼ばない）
     m_frameAllocator.reset();
     m_doubleFrameAllocator.reset();
     m_sceneAllocator.reset();
-    m_heapResource.reset();
+    m_masterResource.reset();
 
     // マスターバッファを解放
     if (m_masterBuffer) {
@@ -108,13 +122,19 @@ MemoryManager::Stats MemoryManager::getStats() const {
     stats.sceneCapacity   = m_sceneAllocator->getCapacity();
     stats.sceneUsageRatio = m_sceneAllocator->getUsageRatio();
 
-    // ヒープアロケーター（FreeList）
-    const auto& heap          = m_heapResource->getAllocator();
-    stats.heapBytes           = heap.getUsedBytes();
-    stats.heapCapacity        = heap.getCapacity();
-    stats.heapUsageRatio      = heap.getUsageRatio();
-    stats.heapAllocationCount = heap.getAllocationCount();
-    stats.heapFreeBlockCount  = heap.getFreeBlockCount();
+    // ヒープアロケーター（マスター FreeList のサブアロケーター予約分を除いた実効値）
+    const auto& master             = m_masterResource->getAllocator();
+    const size_t masterUsed        = master.getUsedBytes();
+    stats.heapBytes                = masterUsed > m_subAllocatorReservedBytes
+                                         ? masterUsed - m_subAllocatorReservedBytes : 0;
+    stats.heapCapacity             = master.getCapacity() > m_subAllocatorReservedBytes
+                                         ? master.getCapacity() - m_subAllocatorReservedBytes : 0;
+    stats.heapUsageRatio           = stats.heapCapacity > 0
+                                         ? static_cast<float>(stats.heapBytes) / stats.heapCapacity : 0.0f;
+    stats.heapAllocationCount      = master.getAllocationCount();
+    stats.heapFreeBlockCount       = master.getFreeBlockCount();
+    stats.masterTotalBytes         = masterUsed;
+    stats.masterTotalCapacity      = master.getCapacity();
 
     // 総割り当て回数
     stats.totalFrameAllocations = m_totalFrameAllocations;
