@@ -159,6 +159,18 @@ void Game::renderImGui() {
 
         ImGui::Separator();
 
+        // ヒープアロケーター（FreeList）
+        ImGui::Text("Heap Allocator (FreeList):");
+        ImGui::Text("  %.2f / %.2f MB (%.1f%%)",
+                    stats.heapBytes / (1024.0f * 1024.0f),
+                    stats.heapCapacity / (1024.0f * 1024.0f),
+                    stats.heapUsageRatio * 100.0f);
+        ImGui::ProgressBar(stats.heapUsageRatio, ImVec2(-1, 0));
+        ImGui::Text("  Allocs: %zu  Free blocks: %zu",
+                    stats.heapAllocationCount, stats.heapFreeBlockCount);
+
+        ImGui::Separator();
+
         // 統計
         ImGui::Text("Total Allocations:");
         ImGui::Text("  Frame: %zu", stats.totalFrameAllocations);

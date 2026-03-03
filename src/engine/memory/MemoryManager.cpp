@@ -4,8 +4,9 @@
 namespace mk::memory {
 
 MemoryManager::MemoryManager()
-    : m_frameAllocator(4 * 1024 * 1024)  // 4MB
-    , m_sceneAllocator(16 * 1024 * 1024) // 16MB
+    : m_frameAllocator(4 * 1024 * 1024)   // 4MB
+    , m_sceneAllocator(16 * 1024 * 1024)  // 16MB
+    , m_heapAllocator(32 * 1024 * 1024)   // 32MB
 {
     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "MemoryManager: Initialized");
 }
@@ -58,6 +59,13 @@ MemoryManager::Stats MemoryManager::getStats() const {
     stats.sceneBytes = m_sceneAllocator.getUsedBytes();
     stats.sceneCapacity = m_sceneAllocator.getCapacity();
     stats.sceneUsageRatio = m_sceneAllocator.getUsageRatio();
+
+    // ヒープアロケーター（FreeList）
+    stats.heapBytes           = m_heapAllocator.getUsedBytes();
+    stats.heapCapacity        = m_heapAllocator.getCapacity();
+    stats.heapUsageRatio      = m_heapAllocator.getUsageRatio();
+    stats.heapAllocationCount = m_heapAllocator.getAllocationCount();
+    stats.heapFreeBlockCount  = m_heapAllocator.getFreeBlockCount();
 
     // 総割り当て回数
     stats.totalFrameAllocations = m_totalFrameAllocations;
