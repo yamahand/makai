@@ -13,14 +13,15 @@ namespace mk::memory {
 /// 使用例:
 /// @code
 /// auto& heap = memoryManager().heapAllocator();
-/// std::vector<int, mk::memory::StlAllocator<int, FreeListAllocator>> v(heap);
+/// std::vector<int, mk::memory::StlAllocator<int, FirstFitAllocator>> v(heap);
 ///
 /// auto& frame = memoryManager().frameAllocator();
 /// std::vector<int, mk::memory::StlAllocator<int, LinearAllocator>> tmp(frame);
 /// @endcode
 ///
 /// 注意:
-/// - バッキングアロケーターの寿命は呼び出し側が管理する
+/// - バッキングアロケーターへの参照が必要なためデフォルトコンストラクタを持たない。
+///   デフォルト構築が必要なコンテナ（一部の std::map など）には使用できない。
 /// - LinearAllocator の deallocate は no-op なので、フレームバッファ等の
 ///   一時コンテナにのみ使うこと
 ///

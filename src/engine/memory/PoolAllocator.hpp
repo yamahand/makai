@@ -119,6 +119,13 @@ PoolAllocator<T, PoolSize>::PoolAllocator()
 {
     // ブロック配列を内部 malloc で確保する
     m_blocks = static_cast<Block*>(std::malloc(sizeof(Block) * PoolSize));
+    if (!m_blocks) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "PoolAllocator<%s>: メモリ確保に失敗しました (%zu 個, %.2f KB)",
+                     typeid(T).name(), PoolSize, (sizeof(Block) * PoolSize) / 1024.0);
+        // m_freeList は nullptr、m_usedCount は 0 のままなのでこのプールは使用不可
+        return;
+    }
     initFreeList();
 
     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,

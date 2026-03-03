@@ -12,6 +12,24 @@ MemoryManager& MemoryManager::instance() {
 void MemoryManager::init(const mk::MemoryConfig& config) {
     auto& mgr = instance();
 
+    // 多重初期化を防ぐ（2回目以降は無視する）
+    if (mgr.m_masterBuffer != nullptr) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "MemoryManager::init が複数回呼ばれました。2回目以降は無視します。");
+        return;
+    }
+
+    // MemoryConfig の値が負または 0 でないことを検証する
+    if (config.frameAllocatorMB <= 0 || config.sceneAllocatorMB <= 0 ||
+        config.heapAllocatorMB  <= 0 || config.doubleFrameAllocatorMB <= 0) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "MemoryManager: MemoryConfig に無効な値が含まれています "
+                     "(frame=%d, doubleFrame=%d, scene=%d, heap=%d)",
+                     config.frameAllocatorMB, config.doubleFrameAllocatorMB,
+                     config.sceneAllocatorMB, config.heapAllocatorMB);
+        return;
+    }
+
     const size_t frameSize       = static_cast<size_t>(config.frameAllocatorMB)       * 1024 * 1024;
     const size_t doubleFrameSize = static_cast<size_t>(config.doubleFrameAllocatorMB) * 1024 * 1024;
     const size_t sceneSize       = static_cast<size_t>(config.sceneAllocatorMB)       * 1024 * 1024;
@@ -38,15 +56,25 @@ void MemoryManager::init(const mk::MemoryConfig& config) {
 
     // 各サブアロケーターはマスター FreeList からバッファを借りる
     // （払い出したバッファは永続使用のため deallocate しない）
-    void* frameBuf   = master.allocate(frameSize,   alignof(std::max_align_t));
-    mgr.m_frameAllocator = std::make_unique<LinearAllocator>(frameBuf, frameSize);
+    void* frameBuf = master.allocate(frameSize,        alignof(std::max_align_t));
+    void* dframe0  = master.allocate(doubleFrameSize,  alignof(std::max_align_t));
+    void* dframe1  = master.allocate(doubleFrameSize,  alignof(std::max_align_t));
+    void* sceneBuf = master.allocate(sceneSize,        alignof(std::max_align_t));
 
-    void* dframe0 = master.allocate(doubleFrameSize, alignof(std::max_align_t));
-    void* dframe1 = master.allocate(doubleFrameSize, alignof(std::max_align_t));
+    // いずれかのサブアロケーター用バッファ確保に失敗した場合は即座に失敗として処理する
+    if (!frameBuf || !dframe0 || !dframe1 || !sceneBuf) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "MemoryManager: サブアロケーター用バッファの確保に失敗");
+        mgr.m_masterResource.reset();
+        std::free(mgr.m_masterBuffer);
+        mgr.m_masterBuffer = nullptr;
+        mgr.m_masterSize   = 0;
+        return;
+    }
+
+    mgr.m_frameAllocator = std::make_unique<LinearAllocator>(frameBuf, frameSize);
     mgr.m_doubleFrameAllocator = std::make_unique<DoubleFrameAllocator>(
         dframe0, doubleFrameSize, dframe1, doubleFrameSize);
-
-    void* sceneBuf = master.allocate(sceneSize, alignof(std::max_align_t));
     mgr.m_sceneAllocator = std::make_unique<LinearAllocator>(sceneBuf, sceneSize);
 
     // サブアロケーター予約分を記録（ヒープ統計の補正に使う）
@@ -59,13 +87,17 @@ void MemoryManager::init(const mk::MemoryConfig& config) {
 }
 
 MemoryManager::~MemoryManager() {
-    // サブアロケーターを先に破棄（外部バッファなので free は呼ばない）
+    // PoolAllocator デストラクタがマスター FreeList に deallocate するため
+    // m_masterResource より先にプールを破棄しなければならない
+    m_pools.clear();
+
+    // サブアロケーターを破棄する（外部バッファなので free は呼ばない）
     m_frameAllocator.reset();
     m_doubleFrameAllocator.reset();
     m_sceneAllocator.reset();
     m_masterResource.reset();
 
-    // マスターバッファを解放
+    // マスターバッファを解放する
     if (m_masterBuffer) {
         std::free(m_masterBuffer);
         m_masterBuffer = nullptr;

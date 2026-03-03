@@ -13,7 +13,12 @@ PagedAllocator::PagedAllocator(size_t pageSize, FirstFitAllocator& backing)
     , m_usedBytes(0)
 {
     // 初期ページを即座に確保して準備しておく
-    addPage();
+    if (!addPage()) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "PagedAllocator: 初期ページの確保に失敗しました (ページサイズ: %zu KB)",
+                     pageSize / 1024);
+        return; // m_head / m_current が nullptr のまま（使用不可状態）
+    }
 
     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
                 "PagedAllocator: 初期化完了 (ページサイズ: %zu KB)",

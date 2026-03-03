@@ -11,9 +11,9 @@ namespace mk::memory {
 ///
 /// 使用例:
 /// @code
-/// auto& res = memoryManager().heapMemoryResource();
-/// std::pmr::vector<int>   v(&res);
-/// std::pmr::string        s("hello", &res);
+/// auto* res = memoryManager().heapMemoryResource();
+/// std::pmr::vector<int>   v(res);
+/// std::pmr::string        s("hello", res);
 /// @endcode
 ///
 /// @tparam SearchPolicy  FirstFitPolicy（デフォルト）または BestFitPolicy

@@ -80,6 +80,10 @@ void BuddyAllocator::initBuffer() {
         ++m_order;
     }
 
+    // 実際にバディシステムが管理する容量はルートブロックのサイズに制限する
+    // （m_capacity > 2^m_order の場合、超過分にバディヘッダを書いてしまうのを防ぐ）
+    m_capacity = blockSize(m_order);
+
     // バッファ全体を 1 つのフリーブロック（最大オーダー）として登録する
     auto* header   = reinterpret_cast<BlockHeader*>(m_buffer);
     header->order  = static_cast<uint32_t>(m_order);
