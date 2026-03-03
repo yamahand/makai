@@ -23,47 +23,36 @@ void TitleScene::update(float deltaTime) {
     m_timer += deltaTime;
 }
 
-void TitleScene::render(SDL_Renderer* renderer) {
-    // 背景
-    SDL_SetRenderDrawColor(renderer, 20, 20, 60, 255);
-    SDL_RenderClear(renderer);
+SceneRenderData TitleScene::collectRenderData() const {
+    SceneRenderData data;
+    data.clearColor = {20, 20, 60, 255};
 
-    // タイトルテキスト
     SDL_Color white = {255, 255, 255, 255};
-    SDL_Texture* titleTexture = m_game.fontManager().renderTextTexture(
-        renderer, "large", "MAKAI", white
-    );
+    float centerX = static_cast<float>(m_game.window().getWidth()) / 2.0f;
 
-    if (titleTexture) {
-        float w, h;
-        SDL_GetTextureSize(titleTexture, &w, &h);
-        SDL_FRect titleRect = {
-            (m_game.window().getWidth() - w) / 2,
-            200,
-            w, h
-        };
-        SDL_RenderTexture(renderer, titleTexture, nullptr, &titleRect);
-        SDL_DestroyTexture(titleTexture);
-    }
+    // タイトルテキスト（水平中央寄せ）
+    data.texts.push_back({
+        .fontName    = "large",
+        .text        = "MAKAI",
+        .x           = centerX,
+        .y           = 200.0f,
+        .color       = white,
+        .alignCenter = true
+    });
 
     // 「ENTER を押してください」点滅テキスト（0.5秒ごとに切り替え）
     if (static_cast<int>(m_timer * 2) % 2 == 0) {
-        SDL_Texture* promptTexture = m_game.fontManager().renderTextTexture(
-            renderer, "default", "Press ENTER to Start", white
-        );
-
-        if (promptTexture) {
-            float w, h;
-            SDL_GetTextureSize(promptTexture, &w, &h);
-            SDL_FRect promptRect = {
-                (m_game.window().getWidth() - w) / 2,
-                400,
-                w, h
-            };
-            SDL_RenderTexture(renderer, promptTexture, nullptr, &promptRect);
-            SDL_DestroyTexture(promptTexture);
-        }
+        data.texts.push_back({
+            .fontName    = "default",
+            .text        = "Press ENTER to Start",
+            .x           = centerX,
+            .y           = 400.0f,
+            .color       = white,
+            .alignCenter = true
+        });
     }
+
+    return data;
 }
 
 } // namespace makai

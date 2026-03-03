@@ -3,10 +3,9 @@
 #include <stack>
 #include <vector>
 #include <SDL3/SDL.h>
+#include "../scenes/Scene.hpp"
 
 namespace makai {
-
-class Scene;
 
 class SceneManager {
 public:
@@ -27,7 +26,12 @@ public:
 
     void handleEvent(const SDL_Event& event);
     void update(float deltaTime);
-    void render(SDL_Renderer* renderer);
+
+    // 現在のシーンから描画データを収集する
+    SceneRenderData collectRenderData() const;
+
+    // 現在のシーンの ImGui ウィジェットを描画する
+    void renderImGui();
 
     // 遅延コマンドを実行（update後に呼ぶ）
     void applyPendingChanges();

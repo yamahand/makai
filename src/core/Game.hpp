@@ -1,6 +1,7 @@
 #pragma once
 #include "Window.hpp"
 #include "SceneManager.hpp"
+#include "Renderer.hpp"
 #include "Config.hpp"
 #include "ImGuiManager.hpp"
 #include "../utils/FontManager.hpp"
@@ -31,10 +32,13 @@ private:
     void update(float deltaTime);
     void render();
     void renderImGui();
+    // Engine固有のデバッグUI（FPS・メモリ統計）を描画する
+    void renderDebugImGui();
 
     Config                          m_config;
     std::unique_ptr<Window>         m_window;
     std::unique_ptr<ImGuiManager>   m_imguiManager;
+    std::unique_ptr<Renderer>       m_renderer;
     SceneManager                    m_sceneManager;
     FontManager                     m_fontManager;
     std::unique_ptr<TextureManager> m_textureManager;

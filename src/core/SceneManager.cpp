@@ -1,5 +1,4 @@
 #include "SceneManager.hpp"
-#include "../scenes/Scene.hpp"
 #include "../memory/MemoryManager.hpp"
 
 namespace makai {
@@ -32,8 +31,13 @@ void SceneManager::update(float deltaTime) {
     if (auto* s = current()) s->update(deltaTime);
 }
 
-void SceneManager::render(SDL_Renderer* renderer) {
-    if (auto* s = current()) s->render(renderer);
+SceneRenderData SceneManager::collectRenderData() const {
+    if (auto* s = current()) return s->collectRenderData();
+    return {};
+}
+
+void SceneManager::renderImGui() {
+    if (auto* s = current()) s->renderImGui();
 }
 
 void SceneManager::applyPendingChanges() {

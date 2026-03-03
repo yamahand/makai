@@ -47,7 +47,10 @@ FetchContent_Declare(
 set(GLM_BUILD_LIBRARY OFF CACHE BOOL "" FORCE)
 set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 # SDL3_image: Use prebuilt binary (FetchContent had git submodule issues)
-set(SDL3_image_DIR "${CMAKE_SOURCE_DIR}/external/SDL3_image-3.4.0/cmake")
+# external/ は .gitignore 対象のため、worktree環境ではメインリポジトリを参照する
+if(NOT DEFINED SDL3_image_DIR)
+    set(SDL3_image_DIR "${CMAKE_SOURCE_DIR}/external/SDL3_image-3.4.0/cmake")
+endif()
 find_package(SDL3_image REQUIRED CONFIG)
 
 FetchContent_MakeAvailable(SDL3 SDL3_ttf imgui json glm)
@@ -80,15 +83,20 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 # Set as startup project in Visual Studio
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 
+# external/ は .gitignore 対象のためメインリポジトリを参照する
+if(NOT DEFINED MAKAI_EXTERNAL_DIR)
+    set(MAKAI_EXTERNAL_DIR "${CMAKE_SOURCE_DIR}/external")
+endif()
+
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/external/SDL3_image-3.4.0/include
+    ${MAKAI_EXTERNAL_DIR}/SDL3_image-3.4.0/include
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     SDL3::SDL3
     SDL3_ttf::SDL3_ttf
-    ${CMAKE_SOURCE_DIR}/external/SDL3_image-3.4.0/lib/x64/SDL3_image.lib
+    ${MAKAI_EXTERNAL_DIR}/SDL3_image-3.4.0/lib/x64/SDL3_image.lib
     imgui_sdl3
     nlohmann_json::nlohmann_json
     glm::glm
@@ -104,7 +112,7 @@ if(WIN32)
             $<TARGET_FILE:SDL3_ttf::SDL3_ttf>
             $<TARGET_FILE_DIR:${PROJECT_NAME}>
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${CMAKE_SOURCE_DIR}/external/SDL3_image-3.4.0/lib/x64/SDL3_image.dll"
+            "${MAKAI_EXTERNAL_DIR}/SDL3_image-3.4.0/lib/x64/SDL3_image.dll"
             $<TARGET_FILE_DIR:${PROJECT_NAME}>
     )
 endif()

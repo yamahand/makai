@@ -31,6 +31,14 @@ Game::Game() {
     // TextureManager を初期化
     m_textureManager = std::make_unique<TextureManager>(m_window->getRenderer());
 
+    // Engine側の描画実行クラスを初期化
+    // FontManager と TextureManager の初期化後に生成すること
+    m_renderer = std::make_unique<Renderer>(
+        m_window->getRenderer(),
+        m_fontManager,
+        *m_textureManager
+    );
+
     // 設定からフォントを読み込む
     m_fontManager.loadFont("default",
                           m_config.defaultFont.path,
@@ -90,16 +98,14 @@ void Game::update(float deltaTime) {
 }
 
 void Game::render() {
-    auto* renderer = m_window->getRenderer();
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
-
-    m_sceneManager.render(renderer);
+    // シーンから描画データを収集し、Renderer に委譲する
+    SceneRenderData data = m_sceneManager.collectRenderData();
+    m_renderer->execute(data);
 
     // ImGui をレンダリング
     renderImGui();
 
-    SDL_RenderPresent(renderer);
+    SDL_RenderPresent(m_window->getRenderer());
 
     // フレームアロケーターをリセット
     memoryManager().onFrameEnd();
@@ -108,6 +114,16 @@ void Game::render() {
 void Game::renderImGui() {
     m_imguiManager->newFrame();
 
+    // Engine固有のデバッグUI
+    renderDebugImGui();
+
+    // 各シーン固有の ImGui UI
+    m_sceneManager.renderImGui();
+
+    m_imguiManager->render();
+}
+
+void Game::renderDebugImGui() {
     // 設定に応じて ImGui デモウィンドウを表示
     if (m_config.debug.showImGuiDemo) {
         ImGui::ShowDemoWindow(&m_config.debug.showImGuiDemo);
@@ -168,8 +184,6 @@ void Game::renderImGui() {
         ImGui::ProgressBar(playerPool.getUsageRatio(), ImVec2(-1, 0));
     }
     ImGui::End();
-
-    m_imguiManager->render();
 }
 
 } // namespace makai

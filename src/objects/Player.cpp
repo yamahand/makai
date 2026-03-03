@@ -34,11 +34,15 @@ void Player::update(float deltaTime) {
     // TODO: ゲーム内時刻と連動させる
 }
 
-void Player::render(SDL_Renderer* renderer) {
-    // TODO: スプライト描画。現在はデバッグ用矩形
-    SDL_FRect rect = { m_x, m_y, 32.0f, 48.0f };
-    SDL_SetRenderDrawColor(renderer, 255, 200, 100, 255);
-    SDL_RenderFillRect(renderer, &rect);
+SpriteInfo Player::getSpriteInfo() const {
+    // TODO: スプライト実装後は textureName を設定する
+    // 現在はデバッグ矩形としてEngineに描画してもらう
+    return SpriteInfo{
+        .textureName = "",
+        .w           = 32.0f,
+        .h           = 48.0f,
+        .debugColor  = {255, 200, 100, 255}
+    };
 }
 
 const char* Player::getCurrentStateName() const {

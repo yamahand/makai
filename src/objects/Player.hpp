@@ -27,7 +27,7 @@ public:
 
     void handleInput(SDL_Scancode key) override;
     void update(float deltaTime) override;
-    void render(SDL_Renderer* renderer) override;
+    SpriteInfo getSpriteInfo() const override;
 
     PlayerStats&       stats()       { return m_stats; }
     const PlayerStats& stats() const { return m_stats; }

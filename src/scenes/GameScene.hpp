@@ -1,8 +1,7 @@
 #pragma once
 #include "Scene.hpp"
 #include "../objects/Player.hpp"
-#include <vector>
-#include <memory>
+#include <string>
 
 namespace makai {
 
@@ -14,16 +13,18 @@ public:
 
     void handleEvent(const SDL_Event& event) override;
     void update(float deltaTime) override;
-    void render(SDL_Renderer* renderer) override;
+    SceneRenderData collectRenderData() const override;
+    void renderImGui() override;
 
     void onEnter()  override;
     void onExit()   override;
 
 private:
     void updateDayCycle(float deltaTime);
-    void renderHUD(SDL_Renderer* renderer);
-    void renderStatBar(SDL_Renderer* renderer, float x, float y, float w, float h,
-                       int value, int maxValue, SDL_Color barColor);
+    // HUD描画データを収集してSceneRenderDataに追加する
+    void collectHUD(SceneRenderData& data) const;
+    // 時刻を HH:MM 形式の文字列で返す
+    std::string formatTime() const;
 
     Player* m_player;  // PoolAllocatorで管理
 
