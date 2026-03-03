@@ -2,42 +2,51 @@
 #include "LinearAllocator.hpp"
 #include "FreeListMemoryResource.hpp"
 #include "PoolAllocator.hpp"
+#include "../core/Config.hpp"
 #include <memory_resource>
 #include <unordered_map>
 #include <typeindex>
 #include <memory>
+#include <cstdlib>
 
 namespace mk::memory {
 
 /// MemoryManager - メモリアロケーターの中央管理
 ///
 /// シングルトンパターンで、ゲーム全体のメモリ割り当てを管理する。
-/// - FrameAllocator: 毎フレームリセットされる一時データ用
-/// - SceneAllocator: シーン変更時にリセットされるシーンデータ用
+/// Game::Game() の先頭で init(config.memory) を呼ぶ必要がある。
+///
+/// 起動時に単一のマスターバッファを確保し、各アロケーターに分配する。
+/// （OS の malloc 呼び出しはこの 1 回のみ）
 ///
 /// 使い方:
+///   MemoryManager::init(config.memory);   // Game::Game() で 1 回だけ
 ///   auto& mem = MemoryManager::instance();
 ///   void* ptr = mem.frameAllocator().allocate(1024);
 class MemoryManager {
 public:
-    /// シングルトンインスタンスを取得
+    /// シングルトンインスタンスを取得（init() 呼び出し後のみ有効）
     static MemoryManager& instance();
+
+    /// マスターバッファを確保してアロケーターを初期化する
+    /// Game::Game() の先頭（他のどの初期化よりも前）に 1 度だけ呼ぶこと
+    static void init(const mk::MemoryConfig& config);
 
     /// フレームアロケーターを取得
     /// 毎フレーム終了時にリセットされる
-    LinearAllocator& frameAllocator() { return m_frameAllocator; }
+    LinearAllocator& frameAllocator() { return *m_frameAllocator; }
 
     /// シーンアロケーターを取得
     /// シーン変更時にリセットされる
-    LinearAllocator& sceneAllocator() { return m_sceneAllocator; }
+    LinearAllocator& sceneAllocator() { return *m_sceneAllocator; }
 
     /// ヒープアロケーターを取得（後方互換）
     /// 可変サイズ・個別解放に対応した汎用アロケーター（First-Fit）
-    FirstFitAllocator& heapAllocator() { return m_heapResource.getAllocator(); }
+    FirstFitAllocator& heapAllocator() { return m_heapResource->getAllocator(); }
 
     /// ヒープの pmr リソースを取得
     /// std::pmr コンテナへそのまま渡せる
-    std::pmr::memory_resource* heapMemoryResource() { return &m_heapResource; }
+    std::pmr::memory_resource* heapMemoryResource() { return m_heapResource.get(); }
 
     /// 型Tのプールアロケーターを取得
     /// 初回アクセス時に自動的に生成される
@@ -82,8 +91,8 @@ public:
     MemoryManager& operator=(const MemoryManager&) = delete;
 
 private:
-    MemoryManager();
-    ~MemoryManager() = default;
+    MemoryManager() = default;
+    ~MemoryManager();
 
     // 型消去されたプールの基底クラス
     struct IPoolBase {
@@ -96,10 +105,14 @@ private:
         PoolAllocator<T, PoolSize> pool;
     };
 
-    // アロケーター
-    LinearAllocator          m_frameAllocator; // 4MB
-    LinearAllocator          m_sceneAllocator; // 16MB
-    FirstFitMemoryResource   m_heapResource;   // 32MB (pmr 対応)
+    // マスターバッファ（起動時に 1 度だけ malloc する）
+    void*  m_masterBuffer = nullptr;
+    size_t m_masterSize   = 0;
+
+    // 各アロケーター（init() 後に有効）
+    std::unique_ptr<LinearAllocator>        m_frameAllocator;
+    std::unique_ptr<LinearAllocator>        m_sceneAllocator;
+    std::unique_ptr<FirstFitMemoryResource> m_heapResource;
 
     // プールアロケーターマップ（型IDで管理）
     std::unordered_map<std::type_index, std::unique_ptr<IPoolBase>> m_pools;

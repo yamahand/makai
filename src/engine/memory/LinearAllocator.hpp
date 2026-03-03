@@ -15,9 +15,15 @@ namespace mk::memory {
 /// - スクラッチバッファ
 class LinearAllocator {
 public:
-    /// コンストラクタ
+    /// コンストラクタ（内部 malloc 版）
     /// @param capacity 割り当て可能な総バイト数
     explicit LinearAllocator(size_t capacity);
+
+    /// コンストラクタ（外部バッファ版）
+    /// バッファの所有権は呼び出し側が持つ（デストラクタで free しない）
+    /// @param buf  外部から提供されるバッファ
+    /// @param capacity バッファのバイト数
+    LinearAllocator(void* buf, size_t capacity);
 
     /// デストラクタ（メモリを解放）
     ~LinearAllocator();
@@ -58,6 +64,7 @@ private:
     void*  m_buffer;   ///< 割り当てバッファ
     size_t m_capacity; ///< 総容量（バイト）
     size_t m_offset;   ///< 現在のオフセット（バイト）
+    bool   m_ownsBuffer; ///< true のとき デストラクタで free する
 };
 
 } // namespace mk::memory

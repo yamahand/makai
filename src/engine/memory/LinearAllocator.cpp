@@ -9,6 +9,7 @@ LinearAllocator::LinearAllocator(size_t capacity)
     : m_buffer(nullptr)
     , m_capacity(capacity)
     , m_offset(0)
+    , m_ownsBuffer(true)
 {
     if (capacity > 0) {
         m_buffer = std::malloc(capacity);
@@ -24,8 +25,19 @@ LinearAllocator::LinearAllocator(size_t capacity)
     }
 }
 
+LinearAllocator::LinearAllocator(void* buf, size_t capacity)
+    : m_buffer(buf)
+    , m_capacity(buf ? capacity : 0)
+    , m_offset(0)
+    , m_ownsBuffer(false)
+{
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                "LinearAllocator: Using external buffer %zu bytes (%.2f MB)",
+                m_capacity, m_capacity / (1024.0 * 1024.0));
+}
+
 LinearAllocator::~LinearAllocator() {
-    if (m_buffer) {
+    if (m_ownsBuffer && m_buffer) {
         std::free(m_buffer);
         m_buffer = nullptr;
     }

@@ -56,8 +56,13 @@ struct BestFitPolicy {
 template<typename SearchPolicy = FirstFitPolicy>
 class FreeListAllocator {
 public:
+    /// コンストラクタ（内部 malloc 版）
     /// @param capacity バッキングバッファのバイト数
     explicit FreeListAllocator(size_t capacity);
+
+    /// コンストラクタ（外部バッファ版）
+    /// バッファの所有権は呼び出し側が持つ（デストラクタで free しない）
+    FreeListAllocator(void* buf, size_t capacity);
     ~FreeListAllocator();
 
     /// メモリを割り当てる
@@ -91,6 +96,7 @@ private:
     size_t m_capacity;
     size_t m_usedBytes;
     size_t m_allocationCount;
+    bool   m_ownsBuffer; ///< true のときデストラクタで free する
 };
 
 // ─────────────────────────────────────────────

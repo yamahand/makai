@@ -77,6 +77,7 @@ FreeListAllocator<SearchPolicy>::FreeListAllocator(size_t capacity)
     , m_capacity(capacity)
     , m_usedBytes(0)
     , m_allocationCount(0)
+    , m_ownsBuffer(true)
 {
     if (capacity > 0) {
         m_buffer = std::malloc(capacity);
@@ -87,7 +88,6 @@ FreeListAllocator<SearchPolicy>::FreeListAllocator(size_t capacity)
             return;
         }
 
-        // バッファ全体を単一のフリーブロックとして初期化
         auto* header         = static_cast<BlockHeader*>(m_buffer);
         header->size         = capacity - sizeof(BlockHeader);
         header->isFree       = true;
@@ -101,13 +101,34 @@ FreeListAllocator<SearchPolicy>::FreeListAllocator(size_t capacity)
 }
 
 template<typename SearchPolicy>
+FreeListAllocator<SearchPolicy>::FreeListAllocator(void* buf, size_t capacity)
+    : m_buffer(buf)
+    , m_capacity(buf ? capacity : 0)
+    , m_usedBytes(0)
+    , m_allocationCount(0)
+    , m_ownsBuffer(false)
+{
+    if (m_buffer && m_capacity > sizeof(BlockHeader)) {
+        // バッファ全体を単一のフリーブロックとして初期化
+        auto* header         = static_cast<BlockHeader*>(m_buffer);
+        header->size         = m_capacity - sizeof(BlockHeader);
+        header->isFree       = true;
+        header->prevPhysical = nullptr;
+    }
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                "FreeListAllocator<%s>: Using external buffer %zu bytes (%.2f MB)",
+                typeid(SearchPolicy).name(),
+                m_capacity, m_capacity / (1024.0 * 1024.0));
+}
+
+template<typename SearchPolicy>
 FreeListAllocator<SearchPolicy>::~FreeListAllocator() {
     if (m_allocationCount > 0) {
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
                     "FreeListAllocator: Destroyed with %zu allocations still active",
                     m_allocationCount);
     }
-    if (m_buffer) {
+    if (m_ownsBuffer && m_buffer) {
         std::free(m_buffer);
         m_buffer = nullptr;
     }

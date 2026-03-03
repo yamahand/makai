@@ -18,6 +18,13 @@ struct FontConfig {
     int size = 16;          // フォントサイズ
 };
 
+// メモリ設定
+struct MemoryConfig {
+    int frameAllocatorMB = 4;   // フレームアロケーターのサイズ（MB）
+    int sceneAllocatorMB = 16;  // シーンアロケーターのサイズ（MB）
+    int heapAllocatorMB  = 32;  // ヒープアロケーターのサイズ（MB）
+};
+
 // ゲーム設定
 struct GameConfig {
     float timeScale = 0.5f;         // ゲーム内時刻のスケール（実秒 × this = ゲーム内時間）
@@ -36,6 +43,7 @@ public:
     WindowConfig window;
     FontConfig defaultFont;
     FontConfig largeFont;
+    MemoryConfig memory;
     GameConfig game;
     DebugConfig debug;
 

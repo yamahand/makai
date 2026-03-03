@@ -20,9 +20,16 @@ namespace mk::memory {
 template<typename SearchPolicy = FirstFitPolicy>
 class FreeListMemoryResource : public std::pmr::memory_resource {
 public:
+    /// コンストラクタ（内部 malloc 版）
     /// @param capacity バッキングバッファのバイト数
     explicit FreeListMemoryResource(size_t capacity)
         : m_allocator(capacity)
+    {}
+
+    /// コンストラクタ（外部バッファ版）
+    /// バッファの所有権は呼び出し側が持つ
+    FreeListMemoryResource(void* buf, size_t capacity)
+        : m_allocator(buf, capacity)
     {}
 
     /// 内部アロケーターへの参照を返す（低レベルアクセス・統計取得用）

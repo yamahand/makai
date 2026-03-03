@@ -14,6 +14,9 @@ Game::Game() {
     // 設定ファイルを読み込む
     m_config = Config::load("config.json");
 
+    // メモリマネージャーを最初に初期化（マスターバッファを確保）
+    memory::MemoryManager::init(m_config.memory);
+
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
         throw std::runtime_error(std::string("SDL_Init failed: ") + SDL_GetError());
     }

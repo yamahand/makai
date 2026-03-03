@@ -1,29 +1,64 @@
 #include "MemoryManager.hpp"
+#include <cstdlib>
 #include <SDL3/SDL_log.h>
 
 namespace mk::memory {
 
-MemoryManager::MemoryManager()
-    : m_frameAllocator(4 * 1024 * 1024)   // 4MB
-    , m_sceneAllocator(16 * 1024 * 1024)  // 16MB
-    , m_heapResource(32 * 1024 * 1024)    // 32MB
-{
-    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "MemoryManager: Initialized");
+MemoryManager& MemoryManager::instance() {
+    static MemoryManager inst;
+    return inst;
 }
 
-MemoryManager& MemoryManager::instance() {
-    static MemoryManager instance;
-    return instance;
+void MemoryManager::init(const mk::MemoryConfig& config) {
+    auto& mgr = instance();
+
+    const size_t frameSize = static_cast<size_t>(config.frameAllocatorMB) * 1024 * 1024;
+    const size_t sceneSize = static_cast<size_t>(config.sceneAllocatorMB) * 1024 * 1024;
+    const size_t heapSize  = static_cast<size_t>(config.heapAllocatorMB)  * 1024 * 1024;
+    const size_t totalSize = frameSize + sceneSize + heapSize;
+
+    mgr.m_masterBuffer = std::malloc(totalSize);
+    mgr.m_masterSize   = totalSize;
+
+    if (!mgr.m_masterBuffer) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "MemoryManager: Failed to allocate master buffer (%zu MB)",
+                     totalSize / (1024 * 1024));
+        return;
+    }
+
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                "MemoryManager: Master buffer %zu MB allocated at %p",
+                totalSize / (1024 * 1024), mgr.m_masterBuffer);
+
+    // マスターバッファを各アロケーターに分配
+    auto* p = static_cast<std::byte*>(mgr.m_masterBuffer);
+    mgr.m_frameAllocator = std::make_unique<LinearAllocator>(p,                      frameSize);
+    mgr.m_sceneAllocator = std::make_unique<LinearAllocator>(p + frameSize,          sceneSize);
+    mgr.m_heapResource   = std::make_unique<FirstFitMemoryResource>(
+                               p + frameSize + sceneSize, heapSize);
+}
+
+MemoryManager::~MemoryManager() {
+    // unique_ptr が各アロケーターを先に破棄する（外部バッファは free しない）
+    m_frameAllocator.reset();
+    m_sceneAllocator.reset();
+    m_heapResource.reset();
+
+    // マスターバッファを解放
+    if (m_masterBuffer) {
+        std::free(m_masterBuffer);
+        m_masterBuffer = nullptr;
+    }
 }
 
 void MemoryManager::onFrameEnd() {
-    // フレームアロケーターをリセット
-    size_t usedBytes = m_frameAllocator.getUsedBytes();
+    size_t usedBytes = m_frameAllocator->getUsedBytes();
     if (usedBytes > 0) {
         m_totalFrameAllocations++;
     }
 
-    m_frameAllocator.reset();
+    m_frameAllocator->reset();
 
     #ifdef DEBUG_MEMORY_VERBOSE
     if (usedBytes > 0) {
@@ -34,13 +69,12 @@ void MemoryManager::onFrameEnd() {
 }
 
 void MemoryManager::onSceneChange() {
-    // シーンアロケーターをリセット
-    size_t usedBytes = m_sceneAllocator.getUsedBytes();
+    size_t usedBytes = m_sceneAllocator->getUsedBytes();
     if (usedBytes > 0) {
         m_totalSceneAllocations++;
     }
 
-    m_sceneAllocator.reset();
+    m_sceneAllocator->reset();
 
     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
                "MemoryManager: Scene allocator reset (used: %zu bytes, %.2f MB)",
@@ -51,17 +85,17 @@ MemoryManager::Stats MemoryManager::getStats() const {
     Stats stats;
 
     // フレームアロケーター
-    stats.frameBytes = m_frameAllocator.getUsedBytes();
-    stats.frameCapacity = m_frameAllocator.getCapacity();
-    stats.frameUsageRatio = m_frameAllocator.getUsageRatio();
+    stats.frameBytes      = m_frameAllocator->getUsedBytes();
+    stats.frameCapacity   = m_frameAllocator->getCapacity();
+    stats.frameUsageRatio = m_frameAllocator->getUsageRatio();
 
     // シーンアロケーター
-    stats.sceneBytes = m_sceneAllocator.getUsedBytes();
-    stats.sceneCapacity = m_sceneAllocator.getCapacity();
-    stats.sceneUsageRatio = m_sceneAllocator.getUsageRatio();
+    stats.sceneBytes      = m_sceneAllocator->getUsedBytes();
+    stats.sceneCapacity   = m_sceneAllocator->getCapacity();
+    stats.sceneUsageRatio = m_sceneAllocator->getUsageRatio();
 
     // ヒープアロケーター（FreeList）
-    const auto& heap              = m_heapResource.getAllocator();
+    const auto& heap          = m_heapResource->getAllocator();
     stats.heapBytes           = heap.getUsedBytes();
     stats.heapCapacity        = heap.getCapacity();
     stats.heapUsageRatio      = heap.getUsageRatio();
