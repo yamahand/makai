@@ -20,9 +20,10 @@ struct FontConfig {
 
 // メモリ設定
 struct MemoryConfig {
-    int frameAllocatorMB = 4;   // フレームアロケーターのサイズ（MB）
-    int sceneAllocatorMB = 16;  // シーンアロケーターのサイズ（MB）
-    int heapAllocatorMB  = 32;  // ヒープアロケーターのサイズ（MB）
+    int frameAllocatorMB       = 4;   // フレームアロケーターのサイズ（MB）
+    int sceneAllocatorMB       = 16;  // シーンアロケーターのサイズ（MB）
+    int heapAllocatorMB        = 32;  // ヒープアロケーターのサイズ（MB）
+    int doubleFrameAllocatorMB = 4;   // ダブルフレームアロケーター 1 バッファ分のサイズ（MB）
 };
 
 // ゲーム設定

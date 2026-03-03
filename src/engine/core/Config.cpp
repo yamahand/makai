@@ -45,9 +45,10 @@ Config Config::load(const std::string& path) {
         // メモリ設定を解析
         if (j.contains("memory")) {
             auto& mem = j["memory"];
-            if (mem.contains("frame_allocator_mb")) config.memory.frameAllocatorMB = mem["frame_allocator_mb"];
-            if (mem.contains("scene_allocator_mb")) config.memory.sceneAllocatorMB = mem["scene_allocator_mb"];
-            if (mem.contains("heap_allocator_mb"))  config.memory.heapAllocatorMB  = mem["heap_allocator_mb"];
+            if (mem.contains("frame_allocator_mb"))        config.memory.frameAllocatorMB       = mem["frame_allocator_mb"];
+            if (mem.contains("scene_allocator_mb"))        config.memory.sceneAllocatorMB       = mem["scene_allocator_mb"];
+            if (mem.contains("heap_allocator_mb"))         config.memory.heapAllocatorMB        = mem["heap_allocator_mb"];
+            if (mem.contains("double_frame_allocator_mb")) config.memory.doubleFrameAllocatorMB = mem["double_frame_allocator_mb"];
         }
 
         // ゲーム設定を別造
@@ -91,9 +92,10 @@ void Config::save(const std::string& path) const {
         j["fonts"]["large"]["path"] = largeFont.path;
         j["fonts"]["large"]["size"] = largeFont.size;
 
-        j["memory"]["frame_allocator_mb"] = memory.frameAllocatorMB;
-        j["memory"]["scene_allocator_mb"] = memory.sceneAllocatorMB;
-        j["memory"]["heap_allocator_mb"]  = memory.heapAllocatorMB;
+        j["memory"]["frame_allocator_mb"]        = memory.frameAllocatorMB;
+        j["memory"]["scene_allocator_mb"]        = memory.sceneAllocatorMB;
+        j["memory"]["heap_allocator_mb"]         = memory.heapAllocatorMB;
+        j["memory"]["double_frame_allocator_mb"] = memory.doubleFrameAllocatorMB;
 
         j["game"]["time_scale"] = game.timeScale;
         j["game"]["starting_money"] = game.startingMoney;

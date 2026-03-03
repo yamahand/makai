@@ -12,10 +12,11 @@ MemoryManager& MemoryManager::instance() {
 void MemoryManager::init(const mk::MemoryConfig& config) {
     auto& mgr = instance();
 
-    const size_t frameSize = static_cast<size_t>(config.frameAllocatorMB) * 1024 * 1024;
-    const size_t sceneSize = static_cast<size_t>(config.sceneAllocatorMB) * 1024 * 1024;
-    const size_t heapSize  = static_cast<size_t>(config.heapAllocatorMB)  * 1024 * 1024;
-    const size_t totalSize = frameSize + sceneSize + heapSize;
+    const size_t frameSize       = static_cast<size_t>(config.frameAllocatorMB)       * 1024 * 1024;
+    const size_t doubleFrameSize = static_cast<size_t>(config.doubleFrameAllocatorMB) * 1024 * 1024;
+    const size_t sceneSize       = static_cast<size_t>(config.sceneAllocatorMB)       * 1024 * 1024;
+    const size_t heapSize        = static_cast<size_t>(config.heapAllocatorMB)        * 1024 * 1024;
+    const size_t totalSize       = frameSize + doubleFrameSize * 2 + sceneSize + heapSize;
 
     mgr.m_masterBuffer = std::malloc(totalSize);
     mgr.m_masterSize   = totalSize;
@@ -33,15 +34,20 @@ void MemoryManager::init(const mk::MemoryConfig& config) {
 
     // マスターバッファを各アロケーターに分配
     auto* p = static_cast<std::byte*>(mgr.m_masterBuffer);
-    mgr.m_frameAllocator = std::make_unique<LinearAllocator>(p,                      frameSize);
-    mgr.m_sceneAllocator = std::make_unique<LinearAllocator>(p + frameSize,          sceneSize);
-    mgr.m_heapResource   = std::make_unique<FirstFitMemoryResource>(
-                               p + frameSize + sceneSize, heapSize);
+    mgr.m_frameAllocator = std::make_unique<LinearAllocator>(p, frameSize);
+    p += frameSize;
+    mgr.m_doubleFrameAllocator = std::make_unique<DoubleFrameAllocator>(
+        p, doubleFrameSize, p + doubleFrameSize, doubleFrameSize);
+    p += doubleFrameSize * 2;
+    mgr.m_sceneAllocator = std::make_unique<LinearAllocator>(p, sceneSize);
+    p += sceneSize;
+    mgr.m_heapResource   = std::make_unique<FirstFitMemoryResource>(p, heapSize);
 }
 
 MemoryManager::~MemoryManager() {
     // unique_ptr が各アロケーターを先に破棄する（外部バッファは free しない）
     m_frameAllocator.reset();
+    m_doubleFrameAllocator.reset();
     m_sceneAllocator.reset();
     m_heapResource.reset();
 
@@ -57,8 +63,10 @@ void MemoryManager::onFrameEnd() {
     if (usedBytes > 0) {
         m_totalFrameAllocations++;
     }
-
     m_frameAllocator->reset();
+
+    // ダブルフレームアロケーターをスワップ（新フロントをリセット）
+    m_doubleFrameAllocator->swap();
 
     #ifdef DEBUG_MEMORY_VERBOSE
     if (usedBytes > 0) {
@@ -88,6 +96,12 @@ MemoryManager::Stats MemoryManager::getStats() const {
     stats.frameBytes      = m_frameAllocator->getUsedBytes();
     stats.frameCapacity   = m_frameAllocator->getCapacity();
     stats.frameUsageRatio = m_frameAllocator->getUsageRatio();
+
+    // ダブルフレームアロケーター（現フロント）
+    const auto& dfa = m_doubleFrameAllocator->current();
+    stats.doubleFrameCurrentBytes        = dfa.getUsedBytes();
+    stats.doubleFrameCapacity            = dfa.getCapacity();
+    stats.doubleFrameCurrentUsageRatio   = dfa.getUsageRatio();
 
     // シーンアロケーター
     stats.sceneBytes      = m_sceneAllocator->getUsedBytes();

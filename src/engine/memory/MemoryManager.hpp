@@ -1,5 +1,6 @@
 #pragma once
 #include "LinearAllocator.hpp"
+#include "DoubleFrameAllocator.hpp"
 #include "FreeListMemoryResource.hpp"
 #include "PoolAllocator.hpp"
 #include "../core/Config.hpp"
@@ -36,6 +37,13 @@ public:
     /// 毎フレーム終了時にリセットされる
     LinearAllocator& frameAllocator() { return *m_frameAllocator; }
 
+    /// ダブルフレームアロケーターを取得（現フレームの割り当て先）
+    /// 前フレームのデータに 1 フレーム間アクセスしたい場合に使う
+    LinearAllocator& doubleFrameAllocator() { return m_doubleFrameAllocator->current(); }
+
+    /// ダブルフレームアロケーターの前フレームバッファを取得（読み取り専用）
+    LinearAllocator& previousFrameAllocator() { return m_doubleFrameAllocator->previous(); }
+
     /// シーンアロケーターを取得
     /// シーン変更時にリセットされる
     LinearAllocator& sceneAllocator() { return *m_sceneAllocator; }
@@ -65,6 +73,11 @@ public:
         size_t frameBytes;
         size_t frameCapacity;
         float  frameUsageRatio;
+
+        // ダブルフレームアロケーター（現フロント）
+        size_t doubleFrameCurrentBytes;
+        size_t doubleFrameCapacity;
+        float  doubleFrameCurrentUsageRatio;
 
         // シーンアロケーター
         size_t sceneBytes;
@@ -111,6 +124,7 @@ private:
 
     // 各アロケーター（init() 後に有効）
     std::unique_ptr<LinearAllocator>        m_frameAllocator;
+    std::unique_ptr<DoubleFrameAllocator>   m_doubleFrameAllocator;
     std::unique_ptr<LinearAllocator>        m_sceneAllocator;
     std::unique_ptr<FirstFitMemoryResource> m_heapResource;
 
