@@ -1,6 +1,9 @@
 #include "Game.hpp"
 #include "game/scenes/TitleScene.hpp"
 #include "game/objects/Player.hpp"
+#ifndef NDEBUG
+#include "game/scenes/DebugBootScene.hpp"
+#endif
 #include <SDL3/SDL.h>
 #include <imgui.h>
 #include <stdexcept>
@@ -42,8 +45,12 @@ Game::Game() {
     // テクスチャを読み込む
     m_textureManager->loadTexture("test", "assets/textures/CustomUVChecker_byValle_1K.png");
 
-    // 最初のシーンをセット
+    // 最初のシーンをセット（デバッグビルドではシーン選択画面を表示）
+#ifndef NDEBUG
+    m_sceneManager.push(std::make_unique<makai::DebugBootScene>(*this));
+#else
     m_sceneManager.push(std::make_unique<makai::TitleScene>(*this));
+#endif
     m_sceneManager.applyPendingChanges();
 }
 
@@ -94,9 +101,12 @@ void Game::render() {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
+    // ImGui フレームを開始（シーンの render より前に呼ぶ必要がある）
+    m_imguiManager->newFrame();
+
     m_sceneManager.render(renderer);
 
-    // ImGui をレンダリング
+    // ImGui のゲーム共通UIをレンダリング
     renderImGui();
 
     SDL_RenderPresent(renderer);
@@ -106,8 +116,6 @@ void Game::render() {
 }
 
 void Game::renderImGui() {
-    m_imguiManager->newFrame();
-
     // 設定に応じて ImGui デモウィンドウを表示
     if (m_config.debug.showImGuiDemo) {
         ImGui::ShowDemoWindow(&m_config.debug.showImGuiDemo);
