@@ -1,0 +1,143 @@
+#include "PagedAllocator.hpp"
+#include <SDL3/SDL_log.h>
+#include <new>
+
+namespace mk::memory {
+
+PagedAllocator::PagedAllocator(size_t pageSize, FirstFitAllocator& backing)
+    : m_backing(backing)
+    , m_pageSize(pageSize)
+    , m_head(nullptr)
+    , m_current(nullptr)
+    , m_pageCount(0)
+    , m_usedBytes(0)
+{
+    // 初期ページを即座に確保して準備しておく
+    addPage();
+
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                "PagedAllocator: 初期化完了 (ページサイズ: %zu KB)",
+                pageSize / 1024);
+}
+
+PagedAllocator::~PagedAllocator() {
+    // 全ページをバッキングアロケーターに返却する
+    PageHeader* page = m_head;
+    while (page) {
+        PageHeader* next = page->next;
+        m_backing.deallocate(page);
+        page = next;
+    }
+
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                "PagedAllocator: 解放完了 (返却ページ数: %zu)", m_pageCount);
+
+    m_head = m_current = nullptr;
+    m_pageCount = 0;
+}
+
+void* PagedAllocator::allocate(size_t size, size_t alignment) {
+    if (size == 0) return nullptr;
+
+    // size がページの収容可能サイズを超えている場合は対応不可
+    if (size > m_pageSize - kHeaderSize) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "PagedAllocator: 要求サイズ(%zu)がページ収容可能サイズ(%zu)を超えています",
+                     size, m_pageSize - kHeaderSize);
+        return nullptr;
+    }
+
+    if (!m_current) {
+        if (!addPage()) return nullptr;
+    }
+
+    // アライメント調整して割り当て可能か確認する
+    auto tryAlloc = [&](PageHeader* page) -> void* {
+        std::byte* base    = pagePayload(page);
+        size_t     addr    = reinterpret_cast<size_t>(base) + page->offset;
+        size_t     aligned = (addr + alignment - 1) & ~(alignment - 1);
+        size_t     padding = aligned - addr;
+        size_t     needed  = padding + size;
+
+        if (page->offset + needed > page->capacity) return nullptr;
+
+        page->offset  += needed;
+        m_usedBytes   += needed;
+        return reinterpret_cast<void*>(aligned);
+    };
+
+    // 現ページで割り当てを試みる
+    if (void* ptr = tryAlloc(m_current)) return ptr;
+
+    // 現ページが足りなければ新しいページを追加して再試行
+    if (!addPage()) return nullptr;
+    return tryAlloc(m_current);
+}
+
+void PagedAllocator::reset() {
+    if (!m_head) return;
+
+    // 先頭ページ以外をバッキングアロケーターに返却する
+    PageHeader* page = m_head->next;
+    while (page) {
+        PageHeader* next = page->next;
+        m_backing.deallocate(page);
+        page = next;
+        m_pageCount--;
+    }
+
+    // 先頭ページのオフセットをリセットして再利用する
+    m_head->next   = nullptr;
+    m_head->offset = 0;
+    m_current      = m_head;
+    m_usedBytes    = 0;
+}
+
+size_t PagedAllocator::getTotalCapacity() const {
+    size_t total = 0;
+    for (PageHeader* p = m_head; p != nullptr; p = p->next) {
+        total += p->capacity;
+    }
+    return total;
+}
+
+float PagedAllocator::getUsageRatio() const {
+    size_t cap = getTotalCapacity();
+    return cap > 0 ? static_cast<float>(m_usedBytes) / cap : 0.0f;
+}
+
+bool PagedAllocator::addPage() {
+    void* buf = m_backing.allocate(m_pageSize, alignof(std::max_align_t));
+    if (!buf) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "PagedAllocator: バッキングアロケーターからのページ確保に失敗 "
+                     "(ページサイズ: %zu KB, 現在 %zu ページ)",
+                     m_pageSize / 1024, m_pageCount);
+        return false;
+    }
+
+    // バッファ先頭にページヘッダを埋め込む（placement new）
+    auto* header    = new(buf) PageHeader{};
+    header->next     = nullptr;
+    header->capacity = m_pageSize - kHeaderSize;
+    header->offset   = 0;
+
+    // リンクリストの末尾に追加する
+    if (!m_head) {
+        m_head    = header;
+        m_current = header;
+    } else {
+        m_current->next = header;
+        m_current       = header;
+    }
+
+    m_pageCount++;
+
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                "PagedAllocator: ページ追加 (ページ番号: %zu, 容量: %zu KB)",
+                m_pageCount, header->capacity / 1024);
+
+    return true;
+}
+
+} // namespace mk::memory
