@@ -118,6 +118,10 @@ private:
     template<typename T, size_t PoolSize>
     struct PoolHolder : IPoolBase {
         PoolAllocator<T, PoolSize> pool;
+
+        /// 外部バッファ版（マスター FreeList からブロック配列を受け取る）
+        PoolHolder(typename PoolAllocator<T, PoolSize>::Block* blocks, FirstFitAllocator& backing)
+            : pool(blocks, backing) {}
     };
 
     // マスターバッファ（起動時に 1 度だけ malloc する）
@@ -151,8 +155,14 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
 
     auto it = m_pools.find(typeIdx);
     if (it == m_pools.end()) {
-        // 初回アクセス時にプールを生成
-        auto holder = std::make_unique<PoolHolder<T, PoolSize>>();
+        // マスター FreeList からブロック配列を確保する
+        using Block = typename PoolAllocator<T, PoolSize>::Block;
+        auto& master = m_masterResource->getAllocator();
+        void* blockBuf = master.allocate(sizeof(Block) * PoolSize, alignof(Block));
+        auto* blocks = static_cast<Block*>(blockBuf);
+
+        // PoolHolder はブロック配列への参照のみを持つ（小さいオブジェクト）
+        auto holder = std::make_unique<PoolHolder<T, PoolSize>>(blocks, master);
         auto* poolPtr = &holder->pool;
         m_pools[typeIdx] = std::move(holder);
         return *poolPtr;
