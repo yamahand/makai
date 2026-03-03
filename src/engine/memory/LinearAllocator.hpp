@@ -42,6 +42,16 @@ public:
     /// 全ての割り当てを無効化する
     void reset();
 
+    /// 現在のオフセットをマーカーとして返す
+    /// rewindTo() に渡すことでその時点まで巻き戻せる
+    size_t mark() const { return m_offset; }
+
+    /// マーカーが示す位置までオフセットを巻き戻す
+    /// @param marker mark() で取得した値
+    void rewindTo(size_t marker) {
+        if (marker <= m_offset) m_offset = marker;
+    }
+
     /// 現在使用中のバイト数を取得
     size_t getUsedBytes() const { return m_offset; }
 
