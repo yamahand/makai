@@ -1,5 +1,6 @@
 #pragma once
 #include <SDL3/SDL.h>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -11,9 +12,9 @@ class Game;
 
 // スプライト描画依頼
 struct SpriteDrawCall {
-    std::string  textureName;          // TextureManager のキー
-    float        x, y, w, h;
-    const SDL_FRect* srcRect = nullptr; // nullptr でテクスチャ全体を使用
+    std::string              textureName;       // TextureManager のキー
+    float                    x, y, w, h;
+    std::optional<SDL_FRect> srcRect;           // nullopt でテクスチャ全体を使用
 };
 
 // テキスト描画依頼
@@ -23,6 +24,7 @@ struct TextDrawCall {
     float       x, y;
     SDL_Color   color;
     bool        alignCenter = false;    // true のとき x を中心として水平中央寄せ
+    bool        alignMiddle = false;    // true のとき y をテキスト縦中央として配置
 };
 
 // デバッグ矩形描画依頼（スプライト未設定のオブジェクト用）

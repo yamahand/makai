@@ -43,7 +43,9 @@ void Renderer::clearBackground(SDL_Color color) {
 
 void Renderer::drawSprite(const SpriteDrawCall& call) {
     SDL_FRect dst = {call.x, call.y, call.w, call.h};
-    m_textureManager.renderTexture(call.textureName, call.srcRect, &dst);
+    // srcRect は optional のため、値がある場合はそのポインタを、ない場合は nullptr を渡す
+    const SDL_FRect* src = call.srcRect.has_value() ? &call.srcRect.value() : nullptr;
+    m_textureManager.renderTexture(call.textureName, src, &dst);
 }
 
 void Renderer::drawText(const TextDrawCall& call) {
@@ -57,7 +59,9 @@ void Renderer::drawText(const TextDrawCall& call) {
 
     // 水平中央寄せ: x を中心として左端を算出する
     float drawX = call.alignCenter ? call.x - w / 2.0f : call.x;
-    SDL_FRect dst = {drawX, call.y, w, h};
+    // 縦中央寄せ: y をテキスト中心として上端を算出する
+    float drawY = call.alignMiddle ? call.y - h / 2.0f : call.y;
+    SDL_FRect dst = {drawX, drawY, w, h};
     SDL_RenderTexture(m_sdlRenderer, tex, nullptr, &dst);
     SDL_DestroyTexture(tex);
 }

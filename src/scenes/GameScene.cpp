@@ -65,15 +65,6 @@ SceneRenderData GameScene::collectRenderData() const {
     SceneRenderData data;
     data.clearColor = {30, 100, 30, 255};
 
-    // テスト用スプライト（プレイヤーの位置に描画）
-    data.sprites.push_back({
-        .textureName = "test",
-        .x           = m_player->getX(),
-        .y           = m_player->getY(),
-        .w           = 64.0f,
-        .h           = 64.0f
-    });
-
     // プレイヤーの見た目情報を取得
     SpriteInfo info = m_player->getSpriteInfo();
     if (!info.textureName.empty()) {
@@ -134,8 +125,9 @@ void GameScene::collectHUD(SceneRenderData& data) const {
     auto addBar = [&](int value, SDL_Color barColor, const std::string& label) {
         data.bars.push_back({barX, barY, barW, barH,
                              static_cast<float>(value) / 100.0f, barColor});
-        // ラベルは barH を考慮して縦中央に配置（テキスト高さ約16pxとして概算）
-        data.texts.push_back({"default", label, labelX, barY + (barH - 16.0f) / 2.0f, white});
+        // ラベルはバー中央に縦中央寄せ（Renderer側でフォントサイズに基づいて調整）
+        float labelY = barY + barH * 0.5f;
+        data.texts.push_back({"default", label, labelX, labelY, white, false, true});
         barY += barSpacing;
     };
 
@@ -149,7 +141,10 @@ void GameScene::collectHUD(SceneRenderData& data) const {
 
     // 下部: 現在のステート
     std::string stateText = std::string("State: ") + m_player->getCurrentStateName();
-    float stateY = static_cast<float>(m_game.window().getHeight()) - 26.0f;
+    constexpr float stateTextApproxHeight = 16.0f;  // デフォルトフォントのおおよその高さ
+    constexpr float stateBottomPadding    = 10.0f;  // 画面下端からの余白
+    float stateY = static_cast<float>(m_game.window().getHeight())
+                   - stateBottomPadding - stateTextApproxHeight;
     data.texts.push_back({"default", stateText, 10.0f, stateY, white});
 }
 

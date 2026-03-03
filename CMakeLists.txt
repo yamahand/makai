@@ -46,10 +46,14 @@ FetchContent_Declare(
 # GLM options: disable library build (header-only mode)
 set(GLM_BUILD_LIBRARY OFF CACHE BOOL "" FORCE)
 set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+# external/ は .gitignore 対象のため、worktree環境ではコマンドライン引数で上書き可能にする
+if(NOT DEFINED MAKAI_EXTERNAL_DIR)
+    set(MAKAI_EXTERNAL_DIR "${CMAKE_SOURCE_DIR}/external")
+endif()
+
 # SDL3_image: Use prebuilt binary (FetchContent had git submodule issues)
-# external/ は .gitignore 対象のため、worktree環境ではメインリポジトリを参照する
 if(NOT DEFINED SDL3_image_DIR)
-    set(SDL3_image_DIR "${CMAKE_SOURCE_DIR}/external/SDL3_image-3.4.0/cmake")
+    set(SDL3_image_DIR "${MAKAI_EXTERNAL_DIR}/SDL3_image-3.4.0/cmake")
 endif()
 find_package(SDL3_image REQUIRED CONFIG)
 
@@ -82,11 +86,6 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 # Set as startup project in Visual Studio
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
-
-# external/ は .gitignore 対象のためメインリポジトリを参照する
-if(NOT DEFINED MAKAI_EXTERNAL_DIR)
-    set(MAKAI_EXTERNAL_DIR "${CMAKE_SOURCE_DIR}/external")
-endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/src
