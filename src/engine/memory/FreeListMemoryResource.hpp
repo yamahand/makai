@@ -1,0 +1,61 @@
+#pragma once
+#include "FreeListAllocator.hpp"
+#include <memory_resource>
+
+namespace mk::memory {
+
+/// FreeListMemoryResource — std::pmr::memory_resource ラッパー
+///
+/// FreeListAllocator を所有し、std::pmr::memory_resource インターフェイスを実装する。
+/// std::pmr::vector / std::pmr::string などの pmr コンテナにそのまま渡せる。
+///
+/// 使用例:
+/// @code
+/// auto& res = memoryManager().heapMemoryResource();
+/// std::pmr::vector<int>   v(&res);
+/// std::pmr::string        s("hello", &res);
+/// @endcode
+///
+/// @tparam SearchPolicy  FirstFitPolicy（デフォルト）または BestFitPolicy
+template<typename SearchPolicy = FirstFitPolicy>
+class FreeListMemoryResource : public std::pmr::memory_resource {
+public:
+    /// @param capacity バッキングバッファのバイト数
+    explicit FreeListMemoryResource(size_t capacity)
+        : m_allocator(capacity)
+    {}
+
+    /// 内部アロケーターへの参照を返す（低レベルアクセス・統計取得用）
+    FreeListAllocator<SearchPolicy>&       getAllocator()       { return m_allocator; }
+    const FreeListAllocator<SearchPolicy>& getAllocator() const { return m_allocator; }
+
+    // コピー禁止
+    FreeListMemoryResource(const FreeListMemoryResource&)            = delete;
+    FreeListMemoryResource& operator=(const FreeListMemoryResource&) = delete;
+
+protected:
+    void* do_allocate(size_t bytes, size_t alignment) override {
+        return m_allocator.allocate(bytes, alignment);
+    }
+
+    void do_deallocate(void* ptr, size_t /*bytes*/, size_t /*alignment*/) override {
+        m_allocator.deallocate(ptr);
+    }
+
+    /// 同一インスタンスのときのみ等しいとみなす
+    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override {
+        return this == &other;
+    }
+
+private:
+    FreeListAllocator<SearchPolicy> m_allocator;
+};
+
+// ─────────────────────────────────────────────
+// Convenience aliases
+// ─────────────────────────────────────────────
+
+using FirstFitMemoryResource = FreeListMemoryResource<FirstFitPolicy>;
+using BestFitMemoryResource  = FreeListMemoryResource<BestFitPolicy>;
+
+} // namespace mk::memory

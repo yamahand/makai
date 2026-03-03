@@ -1,7 +1,8 @@
 #pragma once
 #include "LinearAllocator.hpp"
-#include "FreeListAllocator.hpp"
+#include "FreeListMemoryResource.hpp"
 #include "PoolAllocator.hpp"
+#include <memory_resource>
 #include <unordered_map>
 #include <typeindex>
 #include <memory>
@@ -30,9 +31,13 @@ public:
     /// シーン変更時にリセットされる
     LinearAllocator& sceneAllocator() { return m_sceneAllocator; }
 
-    /// ヒープアロケーターを取得
+    /// ヒープアロケーターを取得（後方互換）
     /// 可変サイズ・個別解放に対応した汎用アロケーター（First-Fit）
-    FirstFitAllocator& heapAllocator() { return m_heapAllocator; }
+    FirstFitAllocator& heapAllocator() { return m_heapResource.getAllocator(); }
+
+    /// ヒープの pmr リソースを取得
+    /// std::pmr コンテナへそのまま渡せる
+    std::pmr::memory_resource* heapMemoryResource() { return &m_heapResource; }
 
     /// 型Tのプールアロケーターを取得
     /// 初回アクセス時に自動的に生成される
@@ -92,9 +97,9 @@ private:
     };
 
     // アロケーター
-    LinearAllocator   m_frameAllocator; // 4MB
-    LinearAllocator   m_sceneAllocator; // 16MB
-    FirstFitAllocator m_heapAllocator;  // 32MB
+    LinearAllocator          m_frameAllocator; // 4MB
+    LinearAllocator          m_sceneAllocator; // 16MB
+    FirstFitMemoryResource   m_heapResource;   // 32MB (pmr 対応)
 
     // プールアロケーターマップ（型IDで管理）
     std::unordered_map<std::type_index, std::unique_ptr<IPoolBase>> m_pools;
