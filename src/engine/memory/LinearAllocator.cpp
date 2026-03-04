@@ -31,9 +31,14 @@ LinearAllocator::LinearAllocator(void* buf, size_t capacity)
     , m_offset(0)
     , m_ownsBuffer(false)
 {
-    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
-                "LinearAllocator: Using external buffer %zu bytes (%.2f MB)",
-                m_capacity, m_capacity / (1024.0 * 1024.0));
+    if (!buf) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "LinearAllocator: External buffer is null. Allocator is unusable.");
+    } else {
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "LinearAllocator: Using external buffer %zu bytes (%.2f MB)",
+                    m_capacity, m_capacity / (1024.0 * 1024.0));
+    }
 }
 
 LinearAllocator::~LinearAllocator() {
@@ -45,6 +50,12 @@ LinearAllocator::~LinearAllocator() {
 
 void* LinearAllocator::allocate(size_t size, size_t alignment) {
     if (size == 0) {
+        return nullptr;
+    }
+
+    if (!m_buffer) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "LinearAllocator: Invalid buffer (null). Allocation request denied.");
         return nullptr;
     }
 
