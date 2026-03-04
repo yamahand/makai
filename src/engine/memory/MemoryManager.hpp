@@ -53,7 +53,7 @@ public:
     }
 
     /// ダブルフレームアロケーターの前フレームバッファを取得（読み取り専用）
-    LinearAllocator& previousFrameAllocator() {
+    const LinearAllocator& previousFrameAllocator() {
         assert(m_doubleFrameAllocator && "MemoryManager::init() が呼ばれていません");
         return m_doubleFrameAllocator->previous();
     }
