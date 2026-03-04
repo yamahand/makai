@@ -178,6 +178,14 @@ PoolAllocator<T, PoolSize>::~PoolAllocator() {
 
 template<typename T, size_t PoolSize>
 T* PoolAllocator<T, PoolSize>::allocate() {
+    // m_blocks が nullptr の場合は確保失敗または外部バッファ未設定（プール枯渇とは別エラー）
+    if (!m_blocks) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "PoolAllocator<%s>: 未初期化または確保失敗のため allocate 不可",
+                     typeid(T).name());
+        return nullptr;
+    }
+
     if (!m_freeList) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                     "PoolAllocator<%s>: プール枯渇 (%zu/%zu)",
