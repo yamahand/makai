@@ -72,7 +72,15 @@ void BuddyAllocator::initBuffer() {
 
     if (!m_buffer || m_capacity < blockSize(MIN_ORDER)) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "BuddyAllocator: バッファサイズが小さすぎます (%zu B)", m_capacity);
+                     "BuddyAllocator: バッファが無効です (ptr=%p, size=%zu B)", m_buffer, m_capacity);
+
+        // 初期化失敗扱いにする
+        if (m_ownsBuffer && m_buffer) {
+            std::free(m_buffer);
+        }
+        m_buffer   = nullptr;
+        m_capacity = 0;
+        m_order    = 0;
         return;
     }
 
