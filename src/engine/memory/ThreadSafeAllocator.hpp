@@ -1,6 +1,7 @@
 #pragma once
 #include <mutex>
 #include <cstddef>
+#include <concepts>
 
 namespace mk::memory {
 
@@ -20,7 +21,8 @@ namespace mk::memory {
 /// @endcode
 ///
 /// @tparam Allocator ラップするアロケーターの型
-///         allocate(size_t, size_t) と deallocate(void*) を持つこと
+///         allocate(size_t, size_t) と deallocate(void*) は必須。
+///         getUsedBytes() / getCapacity() は任意（未対応時は 0 を返す）。
 template<typename Allocator>
 class ThreadSafeAllocator {
 public:
@@ -43,15 +45,29 @@ public:
     }
 
     /// 使用中バイト数（参考値）
+    /// ラップ対象が未対応の場合は 0 を返す。
     size_t getUsedBytes() const {
         std::lock_guard<std::mutex> lock(m_mutex);
-        return m_wrapped.getUsedBytes();
+        if constexpr (requires(const Allocator& alloc) {
+            { alloc.getUsedBytes() } -> std::convertible_to<size_t>;
+        }) {
+            return static_cast<size_t>(m_wrapped.getUsedBytes());
+        } else {
+            return 0;
+        }
     }
 
     /// 総容量
+    /// ラップ対象が未対応の場合は 0 を返す。
     size_t getCapacity() const {
         std::lock_guard<std::mutex> lock(m_mutex);
-        return m_wrapped.getCapacity();
+        if constexpr (requires(const Allocator& alloc) {
+            { alloc.getCapacity() } -> std::convertible_to<size_t>;
+        }) {
+            return static_cast<size_t>(m_wrapped.getCapacity());
+        } else {
+            return 0;
+        }
     }
 
     // コピー禁止（mutex はコピー不可）
