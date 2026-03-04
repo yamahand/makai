@@ -10,11 +10,11 @@ namespace mk::memory {
 // ─────────────────────────────────────────────
 
 /// size 以上の最小の 2 の累乗を返す
-static size_t floorPow2(size_t v) {
-    if (v == 0) return 0;
+static size_t floorPow2(size_t size) {
+    if (size == 0) return 0;
     size_t result = 1;
-    // result * 2 は size_t オーバーフローの恐れがあるため result <= v/2 で比較する
-    while (result <= v / 2) result *= 2;
+    // result * 2 は size_t オーバーフローの恐れがあるため result <= size/2 で比較する
+    while (result <= size / 2) result *= 2;
     return result;
 }
 
