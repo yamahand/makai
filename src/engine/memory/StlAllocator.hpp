@@ -4,6 +4,7 @@
 #include <memory>       // std::allocator_traits
 #include <stdexcept>
 #include <type_traits>
+#include <new>          // std::bad_alloc
 
 namespace mk::memory {
 
