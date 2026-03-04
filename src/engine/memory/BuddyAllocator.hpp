@@ -44,6 +44,9 @@ public:
 
     /// メモリを割り当てる
     /// 要求サイズ + ヘッダを収容できる最小の 2 の累乗ブロックを割り当てる
+    /// @param alignment  2 の累乗かつ HEADER_SIZE (16B) 以下であること。
+    ///                   バディアロケーターは常に 16B アライン保証のため、それ以上は非対応
+    ///                   （違反時は nullptr を返す）
     /// @return 割り当てられたポインタ（失敗時は nullptr）
     void* allocate(size_t size, size_t alignment = 16);
 

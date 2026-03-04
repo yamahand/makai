@@ -150,8 +150,22 @@ void BuddyAllocator::removeFree(void* blockPtr, size_t order) {
 // allocate / deallocate / reset
 // ─────────────────────────────────────────────
 
-void* BuddyAllocator::allocate(size_t size, size_t /*alignment*/) {
+void* BuddyAllocator::allocate(size_t size, size_t alignment) {
     if (size == 0) return nullptr;
+
+    // alignment は 2 の累乗かつ HEADER_SIZE (16B) 以下であること
+    // バディアロケーターはペイロードを常に 16B アラインで返すため、それを超える要求は非対応
+    if (alignment == 0 || (alignment & (alignment - 1)) != 0) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "BuddyAllocator: alignment(%zu) は 2 の累乗である必要があります", alignment);
+        return nullptr;
+    }
+    if (alignment > HEADER_SIZE) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "BuddyAllocator: alignment(%zu) は最大 %zu B まで対応（常に %zu B アライン保証）",
+                     alignment, HEADER_SIZE, HEADER_SIZE);
+        return nullptr;
+    }
 
     // 初期化失敗（m_buffer が nullptr または容量・オーダーが未設定）の場合は使用不可
     if (!m_buffer || m_capacity == 0 || m_order == 0) {
