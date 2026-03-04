@@ -177,7 +177,7 @@ void* FreeListAllocator<SearchPolicy>::allocate(size_t size, size_t alignment) {
 
     splitBlock(header, needed);
     header->isFree = false;
-    m_usedBytes += header->size;
+    m_usedBytes += sizeof(BlockHeader) + header->size;
     ++m_allocationCount;
 
     // ペイロード直前の 1 バイトにパディング量を格納する（deallocate でヘッダ位置を復元するため）
@@ -256,7 +256,7 @@ void FreeListAllocator<SearchPolicy>::deallocate(void* ptr) {
         return;
     }
 
-    m_usedBytes -= header->size;
+    m_usedBytes -= sizeof(BlockHeader) + header->size;
     --m_allocationCount;
     header->isFree = true;
 
