@@ -53,6 +53,13 @@ PagedAllocator::~PagedAllocator() {
 void* PagedAllocator::allocate(size_t size, size_t alignment) {
     if (size == 0) return nullptr;
 
+    // ページサイズがヘッダサイズ以下の場合は割り当て不可
+    if(m_pageSize <= kHeaderSize) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "PagedAllocator: ページサイズがヘッダサイズ以下のため割り当て不可");
+        return nullptr;
+    }
+
     // alignment は2のべき乗かつ1以上でなければならない
     if (alignment == 0 || (alignment & (alignment - 1)) != 0) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
