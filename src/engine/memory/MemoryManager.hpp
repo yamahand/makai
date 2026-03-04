@@ -23,7 +23,9 @@ namespace mk::memory {
 /// （OS の malloc 呼び出しはこの 1 回のみ）
 ///
 /// 使い方:
-///   MemoryManager::init(config.memory);   // Game::Game() で 1 回だけ
+///   if (!MemoryManager::init(config.memory)) {
+///       // 失敗時は起動を中止する
+///   }
 ///   auto& mem = MemoryManager::instance();
 ///   void* ptr = mem.frameAllocator().allocate(1024);
 class MemoryManager {
@@ -33,7 +35,8 @@ public:
 
     /// マスターバッファを確保してアロケーターを初期化する
     /// Game::Game() の先頭（他のどの初期化よりも前）に 1 度だけ呼ぶこと
-    static void init(const mk::MemoryConfig& config);
+    /// @return 成功時 true。失敗時 false（呼び出し側は起動を中止すること）
+    static bool init(const mk::MemoryConfig& config);
 
     /// フレームアロケーターを取得
     /// 毎フレーム終了時にリセットされる

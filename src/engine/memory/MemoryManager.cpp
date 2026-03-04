@@ -9,14 +9,14 @@ MemoryManager& MemoryManager::instance() {
     return inst;
 }
 
-void MemoryManager::init(const mk::MemoryConfig& config) {
+bool MemoryManager::init(const mk::MemoryConfig& config) {
     auto& mgr = instance();
 
     // 多重初期化を防ぐ（2回目以降は無視する）
     if (mgr.m_masterBuffer != nullptr) {
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
                     "MemoryManager::init が複数回呼ばれました。2回目以降は無視します。");
-        return;
+        return true;
     }
 
     // MemoryConfig の値が負または 0 でないことを検証する
@@ -27,7 +27,7 @@ void MemoryManager::init(const mk::MemoryConfig& config) {
                      "(frame=%d, doubleFrame=%d, scene=%d, heap=%d)",
                      config.frameAllocatorMB, config.doubleFrameAllocatorMB,
                      config.sceneAllocatorMB, config.heapAllocatorMB);
-        return;
+        return false;
     }
 
     // 各アロケーターサイズの上限チェック（乗算オーバーフロー防止）
@@ -40,7 +40,7 @@ void MemoryManager::init(const mk::MemoryConfig& config) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "MemoryManager: MemoryConfig の値が上限(%d MB)を超えています",
                      MAX_ALLOCATOR_MB);
-        return;
+        return false;
     }
 
     const size_t frameSize       = static_cast<size_t>(config.frameAllocatorMB)       * 1024 * 1024;
@@ -52,7 +52,7 @@ void MemoryManager::init(const mk::MemoryConfig& config) {
     if (doubleFrameSize > (SIZE_MAX / 2)) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "MemoryManager: doubleFrameAllocatorMB の 2 倍がオーバーフローします");
-        return;
+        return false;
     }
     const size_t doubleFrameTotal = doubleFrameSize * 2;
     const size_t totalSize        = frameSize + doubleFrameTotal + sceneSize + heapSize;
@@ -61,7 +61,7 @@ void MemoryManager::init(const mk::MemoryConfig& config) {
     if (totalSize < frameSize || totalSize < heapSize) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "MemoryManager: MemoryConfig の合計サイズがオーバーフローしました");
-        return;
+        return false;
     }
 
     mgr.m_masterBuffer = std::malloc(totalSize);
@@ -71,7 +71,7 @@ void MemoryManager::init(const mk::MemoryConfig& config) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "MemoryManager: マスターバッファの確保に失敗 (%zu MB)",
                      totalSize / (1024 * 1024));
-        return;
+        return false;
     }
 
     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
@@ -97,7 +97,7 @@ void MemoryManager::init(const mk::MemoryConfig& config) {
         std::free(mgr.m_masterBuffer);
         mgr.m_masterBuffer = nullptr;
         mgr.m_masterSize   = 0;
-        return;
+        return false;
     }
 
     mgr.m_frameAllocator = std::make_unique<LinearAllocator>(frameBuf, frameSize);
@@ -112,6 +112,8 @@ void MemoryManager::init(const mk::MemoryConfig& config) {
                 "MemoryManager: サブアロケーター予約 %zu MB / ヒープ残余 %zu MB",
                 mgr.m_subAllocatorReservedBytes / (1024 * 1024),
                 (totalSize - mgr.m_subAllocatorReservedBytes) / (1024 * 1024));
+
+    return true;
 }
 
 MemoryManager::~MemoryManager() {
