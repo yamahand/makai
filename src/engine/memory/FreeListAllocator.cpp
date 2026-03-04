@@ -81,7 +81,7 @@ FreeListAllocator<SearchPolicy>::FreeListAllocator(size_t capacity)
     , m_allocationCount(0)
     , m_ownsBuffer(true)
 {
-    if (capacity > 0) {
+    if (capacity > sizeof(BlockHeader)) {
         m_buffer = std::malloc(capacity);
         if (!m_buffer) {
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
@@ -99,6 +99,12 @@ FreeListAllocator<SearchPolicy>::FreeListAllocator(size_t capacity)
                     "FreeListAllocator<%s>: Allocated %zu bytes (%.2f MB)",
                     typeid(SearchPolicy).name(),
                     capacity, capacity / (1024.0 * 1024.0));
+    } else {
+        // ヘッダ 1 つ分にも満たない容量は使用不可（capacity == 0 を含む）
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "FreeListAllocator: 容量 (%zu B) が小さすぎます (最低 %zu B 必要)",
+                     capacity, sizeof(BlockHeader) + 1);
+        m_capacity = 0;
     }
 }
 
