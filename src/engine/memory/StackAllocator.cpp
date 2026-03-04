@@ -33,6 +33,13 @@ StackAllocator::~StackAllocator() {
 void* StackAllocator::allocate(size_t size, size_t alignment) {
     if (size == 0) return nullptr;
 
+    // alignment は2のべき乗かつ1以上でなければならない
+    if (alignment == 0 || (alignment & (alignment - 1)) != 0) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "StackAllocator: alignment は2のべき乗でなければなりません (%zu)", alignment);
+        return nullptr;
+    }
+
     // ペイロードの直前に prevOffset (size_t) を格納する。
     // レイアウト: [...パディング...][prevOffset: size_t][ペイロード]
     //                                                   ↑ここを返す

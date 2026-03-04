@@ -14,11 +14,13 @@ static constexpr size_t MIN_SPLIT_PAYLOAD = 8;
 // ─────────────────────────────────────────────
 
 /// アライメントパディングを計算するヘルパー
+/// padding は常に [1, alignment] の範囲に収まる（deallocate の調整量格納バイトを確保するため）
 static size_t calcNeeded(FreeListBlockHeader* header, size_t size, size_t alignment) {
     auto* payloadStart = reinterpret_cast<std::byte*>(header) + sizeof(FreeListBlockHeader);
     size_t addr    = reinterpret_cast<size_t>(payloadStart);
-    size_t aligned = (addr + (alignment - 1)) & ~(alignment - 1);
-    size_t padding = aligned - addr;
+    // addr+1 以上からアライメントすることで最低1バイトのパディングを保証する
+    size_t aligned = (addr + alignment) & ~(alignment - 1);
+    size_t padding = aligned - addr;  // 常に [1, alignment]
     return padding + size;
 }
 
@@ -138,6 +140,14 @@ template<typename SearchPolicy>
 void* FreeListAllocator<SearchPolicy>::allocate(size_t size, size_t alignment) {
     if (size == 0 || !m_buffer) return nullptr;
 
+    // alignment は2のべき乗かつ1以上でなければならない
+    if (alignment == 0 || (alignment & (alignment - 1)) != 0) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "FreeListAllocator: alignment は2のべき乗でなければなりません (%zu)",
+                     alignment);
+        return nullptr;
+    }
+
     const std::byte* bufferEnd = static_cast<std::byte*>(m_buffer) + m_capacity;
     auto result = SearchPolicy::findBlock(static_cast<BlockHeader*>(m_buffer),
                                           size, alignment, bufferEnd);
@@ -149,17 +159,18 @@ void* FreeListAllocator<SearchPolicy>::allocate(size_t size, size_t alignment) {
 
     BlockHeader* header = result.header;
     size_t needed       = result.needed;
-
-    // アライメントパディングを size に含める
-    // （ヘッダは常に payload の直前にあるので deallocate 時に逆算可能）
-    size_t padding = needed - size;
+    size_t padding      = needed - size;  // calcNeeded により padding >= 1 が保証されている
 
     splitBlock(header, needed);
     header->isFree = false;
     m_usedBytes += header->size;
     ++m_allocationCount;
 
-    return reinterpret_cast<std::byte*>(header) + sizeof(BlockHeader) + padding;
+    // ペイロード直前の 1 バイトにパディング量を格納する（deallocate でヘッダ位置を復元するため）
+    auto* returnPtr = reinterpret_cast<std::byte*>(header) + sizeof(BlockHeader) + padding;
+    *(returnPtr - 1) = static_cast<std::byte>(padding);
+
+    return returnPtr;
 }
 
 template<typename SearchPolicy>
@@ -175,7 +186,9 @@ void FreeListAllocator<SearchPolicy>::deallocate(void* ptr) {
         return;
     }
 
-    auto* header = reinterpret_cast<BlockHeader*>(bytePtr - sizeof(BlockHeader));
+    // ペイロード直前の 1 バイトからパディング量を読み取り、ヘッダを復元する
+    size_t padding = static_cast<size_t>(*(bytePtr - 1));
+    auto* header = reinterpret_cast<BlockHeader*>(bytePtr - padding - sizeof(BlockHeader));
     if (header->isFree) {
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
                     "FreeListAllocator: Double-free detected");

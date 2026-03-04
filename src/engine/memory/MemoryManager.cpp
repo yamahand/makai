@@ -36,6 +36,13 @@ void MemoryManager::init(const mk::MemoryConfig& config) {
     const size_t heapSize        = static_cast<size_t>(config.heapAllocatorMB)        * 1024 * 1024;
     const size_t totalSize       = frameSize + doubleFrameSize * 2 + sceneSize + heapSize;
 
+    // 合計サイズのオーバーフロー検出（size_t の加算が折り返した場合）
+    if (totalSize < heapSize) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "MemoryManager: MemoryConfig の合計サイズがオーバーフローしました");
+        return;
+    }
+
     mgr.m_masterBuffer = std::malloc(totalSize);
     mgr.m_masterSize   = totalSize;
 

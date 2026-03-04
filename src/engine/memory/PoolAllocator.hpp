@@ -141,6 +141,13 @@ PoolAllocator<T, PoolSize>::PoolAllocator(Block* blocks, FirstFitAllocator& back
     , m_ownsBuffer(false)
     , m_backing(&backing)
 {
+    // 外部バッファが nullptr の場合はこのプールは使用不可のままにする
+    if (!m_blocks) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "PoolAllocator<%s>: 外部バッファが nullptr です (%zu 個, %.2f KB)",
+                     typeid(T).name(), PoolSize, (sizeof(Block) * PoolSize) / 1024.0);
+        return;
+    }
     initFreeList();
 
     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,

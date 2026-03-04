@@ -44,6 +44,13 @@ PagedAllocator::~PagedAllocator() {
 void* PagedAllocator::allocate(size_t size, size_t alignment) {
     if (size == 0) return nullptr;
 
+    // alignment は2のべき乗かつ1以上でなければならない
+    if (alignment == 0 || (alignment & (alignment - 1)) != 0) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "PagedAllocator: alignment は2のべき乗でなければなりません (%zu)", alignment);
+        return nullptr;
+    }
+
     // size がページの収容可能サイズを超えている場合は対応不可
     if (size > m_pageSize - kHeaderSize) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,

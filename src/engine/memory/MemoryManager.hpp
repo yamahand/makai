@@ -9,6 +9,7 @@
 #include <typeindex>
 #include <memory>
 #include <cstdlib>
+#include <cassert>
 
 namespace mk::memory {
 
@@ -35,26 +36,44 @@ public:
 
     /// フレームアロケーターを取得
     /// 毎フレーム終了時にリセットされる
-    LinearAllocator& frameAllocator() { return *m_frameAllocator; }
+    LinearAllocator& frameAllocator() {
+        assert(m_frameAllocator && "MemoryManager::init() が呼ばれていません");
+        return *m_frameAllocator;
+    }
 
     /// ダブルフレームアロケーターを取得（現フレームの割り当て先）
     /// 前フレームのデータに 1 フレーム間アクセスしたい場合に使う
-    LinearAllocator& doubleFrameAllocator() { return m_doubleFrameAllocator->current(); }
+    LinearAllocator& doubleFrameAllocator() {
+        assert(m_doubleFrameAllocator && "MemoryManager::init() が呼ばれていません");
+        return m_doubleFrameAllocator->current();
+    }
 
     /// ダブルフレームアロケーターの前フレームバッファを取得（読み取り専用）
-    LinearAllocator& previousFrameAllocator() { return m_doubleFrameAllocator->previous(); }
+    LinearAllocator& previousFrameAllocator() {
+        assert(m_doubleFrameAllocator && "MemoryManager::init() が呼ばれていません");
+        return m_doubleFrameAllocator->previous();
+    }
 
     /// シーンアロケーターを取得
     /// シーン変更時にリセットされる
-    LinearAllocator& sceneAllocator() { return *m_sceneAllocator; }
+    LinearAllocator& sceneAllocator() {
+        assert(m_sceneAllocator && "MemoryManager::init() が呼ばれていません");
+        return *m_sceneAllocator;
+    }
 
     /// ヒープアロケーターを取得
     /// 可変サイズ・個別解放に対応した汎用アロケーター（マスター FreeList の残余領域）
-    FirstFitAllocator& heapAllocator() { return m_masterResource->getAllocator(); }
+    FirstFitAllocator& heapAllocator() {
+        assert(m_masterResource && "MemoryManager::init() が呼ばれていません");
+        return m_masterResource->getAllocator();
+    }
 
     /// ヒープの pmr リソースを取得
     /// std::pmr コンテナへそのまま渡せる
-    std::pmr::memory_resource* heapMemoryResource() { return m_masterResource.get(); }
+    std::pmr::memory_resource* heapMemoryResource() {
+        assert(m_masterResource && "MemoryManager::init() が呼ばれていません");
+        return m_masterResource.get();
+    }
 
     /// 型Tのプールアロケーターを取得
     /// 初回アクセス時に自動的に生成される

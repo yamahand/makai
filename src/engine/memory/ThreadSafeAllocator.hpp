@@ -42,11 +42,17 @@ public:
         m_wrapped.deallocate(ptr);
     }
 
-    /// 使用中バイト数（ロックなし・参考値）
-    size_t getUsedBytes() const { return m_wrapped.getUsedBytes(); }
+    /// 使用中バイト数（参考値）
+    size_t getUsedBytes() const {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_wrapped.getUsedBytes();
+    }
 
-    /// 総容量（ロックなし）
-    size_t getCapacity() const { return m_wrapped.getCapacity(); }
+    /// 総容量
+    size_t getCapacity() const {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_wrapped.getCapacity();
+    }
 
     // コピー禁止（mutex はコピー不可）
     ThreadSafeAllocator(const ThreadSafeAllocator&) = delete;
