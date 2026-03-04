@@ -41,9 +41,15 @@ BuddyAllocator::BuddyAllocator(size_t size)
     m_buffer = std::malloc(m_capacity);
     initBuffer();
 
-    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
-                "BuddyAllocator: 内部バッファで初期化 (%zu KB, order %zu)",
-                m_capacity / 1024, m_order);
+    if (m_buffer && m_order != 0) {
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "BuddyAllocator: 内部バッファで初期化 (%zu KB, order %zu)",
+                    m_capacity / 1024, m_order);
+    } else {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "BuddyAllocator: 内部バッファの初期化に失敗 (%zu KB)",
+                     m_capacity / 1024);
+    }
 }
 
 BuddyAllocator::BuddyAllocator(void* buf, size_t size)
@@ -55,9 +61,15 @@ BuddyAllocator::BuddyAllocator(void* buf, size_t size)
 {
     initBuffer();
 
-    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
-                "BuddyAllocator: 外部バッファで初期化 (%zu KB, order %zu)",
-                m_capacity / 1024, m_order);
+    if (m_buffer && m_order != 0) {
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "BuddyAllocator: 外部バッファで初期化 (%zu KB, order %zu)",
+                    m_capacity / 1024, m_order);
+    } else {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "BuddyAllocator: 外部バッファの初期化に失敗 (%zu KB)",
+                     m_capacity / 1024);
+    }
 }
 
 BuddyAllocator::~BuddyAllocator() {
