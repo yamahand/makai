@@ -11,8 +11,8 @@ namespace mk::memory {
 /// StlAllocator - STL コンテナ用アロケーターアダプター
 ///
 /// LinearAllocator・FreeListAllocator などの既存アロケーターを
-/// C++ named requirement (Allocator) に準拠させるラッパー。
-///
+/// STL コンテナから利用するためのアダプタ（C++ named requirement
+/// Allocator の全要件を満たすわけではない）。
 /// 使用例:
 /// @code
 /// auto& heap = memoryManager().heapAllocator();
