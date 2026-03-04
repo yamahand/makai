@@ -223,6 +223,13 @@ void PoolAllocator<T, PoolSize>::deallocate(T* ptr) {
 
 template<typename T, size_t PoolSize>
 void PoolAllocator<T, PoolSize>::reset() {
+    // m_blocks が nullptr の場合は使用不可状態のため no-op
+    if (!m_blocks) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "PoolAllocator<%s>: 未初期化のため reset をスキップ", typeid(T).name());
+        return;
+    }
+
     initFreeList();
     m_usedCount = 0;
 
