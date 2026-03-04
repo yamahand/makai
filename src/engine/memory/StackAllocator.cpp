@@ -82,7 +82,7 @@ void StackAllocator::deallocate(void* ptr) {
     auto* bufEnd   = bufStart + m_capacity;
 
     // ヘッダとして sizeof(size_t) バイト（prevOffset）がペイロード直前に存在する前提
-    if (bytePtr < bufStart + sizeof(size_t) || bytePtr > bufEnd) {
+    if (bytePtr < bufStart + sizeof(size_t) || bytePtr >= bufEnd) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "StackAllocator: 範囲外ポインタ %p の解放（バッファ: [%p, %p)）",
                      ptr, static_cast<void*>(bufStart), static_cast<void*>(bufEnd));
@@ -106,7 +106,7 @@ void StackAllocator::deallocate(void* ptr) {
     }
 
     // ptr 自身も、ヘッダを含む現在のスタック範囲内にあることを確認する
-    if (bytePtr < bufStart + prevOffset || bytePtr > bufStart + m_offset) {
+    if (bytePtr < bufStart + prevOffset || bytePtr >= bufStart + m_offset) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "StackAllocator: 不正なポインタ %p の解放 (prevOffset=%zu, m_offset=%zu)",
                      ptr, prevOffset, m_offset);
