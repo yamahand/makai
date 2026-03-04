@@ -230,7 +230,19 @@ bool PoolAllocator<T, PoolSize>::ownsBlock(const T* ptr) const {
     const std::byte* poolStart = reinterpret_cast<const std::byte*>(m_blocks);
     const std::byte* poolEnd   = poolStart + (sizeof(Block) * PoolSize);
 
-    return bytePtr >= poolStart && bytePtr < poolEnd;
+    // プール範囲内かどうかに加えて、ブロック境界 (Block::storage の先頭) に
+    // 一致していることも検証する。
+    if (bytePtr < poolStart || bytePtr >= poolEnd) {
+        return false;
+    }
+
+    const std::ptrdiff_t diff = bytePtr - poolStart;
+    if (diff < 0) {
+        return false;
+    }
+
+    const std::size_t offset = static_cast<std::size_t>(diff);
+    return (offset % sizeof(Block)) == offsetof(Block, storage);
 }
 
 } // namespace mk::memory
