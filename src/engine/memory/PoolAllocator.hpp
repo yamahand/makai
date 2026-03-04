@@ -102,6 +102,8 @@ private:
 
 template<typename T, size_t PoolSize>
 void PoolAllocator<T, PoolSize>::initFreeList() {
+    if (!m_blocks) return;  // nullptr の場合は使用不可状態のまま
+
     // ブロック配列全体をフリーリストとして繋ぐ
     m_freeList = nullptr;
     for (size_t i = 0; i < PoolSize; ++i) {
@@ -220,6 +222,8 @@ void PoolAllocator<T, PoolSize>::reset() {
 
 template<typename T, size_t PoolSize>
 bool PoolAllocator<T, PoolSize>::ownsBlock(const T* ptr) const {
+    if (!m_blocks || !ptr) return false;  // nullptr 時はポインタ演算を避ける
+
     const std::byte* bytePtr   = reinterpret_cast<const std::byte*>(ptr);
     const std::byte* poolStart = reinterpret_cast<const std::byte*>(m_blocks);
     const std::byte* poolEnd   = poolStart + (sizeof(Block) * PoolSize);

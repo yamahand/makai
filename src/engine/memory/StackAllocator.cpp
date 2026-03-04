@@ -68,9 +68,20 @@ void* StackAllocator::allocate(size_t size, size_t alignment) {
 void StackAllocator::deallocate(void* ptr) {
     if (!ptr) return;
 
+    // ptr がバッファ範囲内かつ prevOffset を読み取れる位置か確認する
+    auto* bytePtr  = static_cast<std::byte*>(ptr);
+    auto* bufStart = static_cast<std::byte*>(m_buffer);
+    auto* bufEnd   = bufStart + m_capacity;
+
+    if (bytePtr <= bufStart + sizeof(size_t) || bytePtr > bufEnd) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "StackAllocator: 範囲外ポインタ %p の解放（バッファ: [%p, %p)）",
+                     ptr, static_cast<void*>(bufStart), static_cast<void*>(bufEnd));
+        return;
+    }
+
     // ペイロードの直前 sizeof(size_t) バイトに格納された prevOffset を読み出す
-    size_t prevOffset = *reinterpret_cast<size_t*>(
-        static_cast<std::byte*>(ptr) - sizeof(size_t));
+    size_t prevOffset = *reinterpret_cast<size_t*>(bytePtr - sizeof(size_t));
 
     // バッファ範囲内の値であることを確認する
     if (prevOffset > m_offset) {

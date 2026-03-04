@@ -135,6 +135,13 @@ void BuddyAllocator::removeFree(void* blockPtr, size_t order) {
 void* BuddyAllocator::allocate(size_t size, size_t /*alignment*/) {
     if (size == 0) return nullptr;
 
+    // 初期化失敗（m_buffer が nullptr または容量・オーダーが未設定）の場合は使用不可
+    if (!m_buffer || m_capacity == 0 || m_order == 0) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "BuddyAllocator: 未初期化状態での allocate 呼び出し");
+        return nullptr;
+    }
+
     size_t totalSize  = HEADER_SIZE + size;
     size_t order      = ceilOrder(totalSize);
     if (order < MIN_ORDER) order = MIN_ORDER;

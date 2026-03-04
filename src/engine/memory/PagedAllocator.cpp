@@ -12,6 +12,14 @@ PagedAllocator::PagedAllocator(size_t pageSize, FirstFitAllocator& backing)
     , m_pageCount(0)
     , m_usedBytes(0)
 {
+    // pageSize がヘッダ分にも満たない場合は容量計算がアンダーフローするため使用不可にする
+    if (pageSize <= kHeaderSize) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "PagedAllocator: ページサイズ(%zu B)がヘッダサイズ(%zu B)以下のため使用不可",
+                     pageSize, kHeaderSize);
+        return; // m_head / m_current が nullptr のまま（使用不可状態）
+    }
+
     // 初期ページを即座に確保して準備しておく
     if (!addPage()) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,

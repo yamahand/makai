@@ -30,14 +30,35 @@ void MemoryManager::init(const mk::MemoryConfig& config) {
         return;
     }
 
+    // 各アロケーターサイズの上限チェック（乗算オーバーフロー防止）
+    // 1 アロケーターあたり 4096 MB を上限とする（ゲームエンジンの実用範囲）
+    static constexpr int MAX_ALLOCATOR_MB = 4096;
+    if (config.frameAllocatorMB       > MAX_ALLOCATOR_MB ||
+        config.doubleFrameAllocatorMB > MAX_ALLOCATOR_MB ||
+        config.sceneAllocatorMB       > MAX_ALLOCATOR_MB ||
+        config.heapAllocatorMB        > MAX_ALLOCATOR_MB) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "MemoryManager: MemoryConfig の値が上限(%d MB)を超えています",
+                     MAX_ALLOCATOR_MB);
+        return;
+    }
+
     const size_t frameSize       = static_cast<size_t>(config.frameAllocatorMB)       * 1024 * 1024;
     const size_t doubleFrameSize = static_cast<size_t>(config.doubleFrameAllocatorMB) * 1024 * 1024;
     const size_t sceneSize       = static_cast<size_t>(config.sceneAllocatorMB)       * 1024 * 1024;
     const size_t heapSize        = static_cast<size_t>(config.heapAllocatorMB)        * 1024 * 1024;
-    const size_t totalSize       = frameSize + doubleFrameSize * 2 + sceneSize + heapSize;
 
-    // 合計サイズのオーバーフロー検出（size_t の加算が折り返した場合）
-    if (totalSize < heapSize) {
+    // doubleFrameSize*2 の乗算オーバーフロー検出
+    if (doubleFrameSize > (SIZE_MAX / 2)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "MemoryManager: doubleFrameAllocatorMB の 2 倍がオーバーフローします");
+        return;
+    }
+    const size_t doubleFrameTotal = doubleFrameSize * 2;
+    const size_t totalSize        = frameSize + doubleFrameTotal + sceneSize + heapSize;
+
+    // 加算オーバーフロー検出（各項より合計が小さくなった場合に折り返しを検知）
+    if (totalSize < frameSize || totalSize < heapSize) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "MemoryManager: MemoryConfig の合計サイズがオーバーフローしました");
         return;
@@ -143,6 +164,12 @@ void MemoryManager::onSceneChange() {
 }
 
 MemoryManager::Stats MemoryManager::getStats() const {
+    // init() 未呼び出しまたは失敗時はゼロ値を返す
+    if (!m_masterResource || !m_frameAllocator ||
+        !m_doubleFrameAllocator || !m_sceneAllocator) {
+        return Stats{};
+    }
+
     Stats stats;
 
     // フレームアロケーター

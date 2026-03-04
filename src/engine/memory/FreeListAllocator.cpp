@@ -116,6 +116,13 @@ FreeListAllocator<SearchPolicy>::FreeListAllocator(void* buf, size_t capacity)
         header->size         = m_capacity - sizeof(BlockHeader);
         header->isFree       = true;
         header->prevPhysical = nullptr;
+    } else if (m_buffer) {
+        // 容量がヘッダ 1 つ分にも満たない場合は使用不可にする
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "FreeListAllocator: バッファ容量 (%zu B) が小さすぎます (最低 %zu B 必要)",
+                     capacity, sizeof(BlockHeader) + 1);
+        m_buffer   = nullptr;
+        m_capacity = 0;
     }
     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
                 "FreeListAllocator<%s>: Using external buffer %zu bytes (%.2f MB)",
@@ -187,7 +194,7 @@ void FreeListAllocator<SearchPolicy>::deallocate(void* ptr) {
     auto* bytePtr  = static_cast<std::byte*>(ptr);
     auto* bufStart = static_cast<std::byte*>(m_buffer);
     auto* bufEnd   = bufStart + m_capacity;
-    if (bytePtr < bufStart || bytePtr >= bufEnd) {
+    if (bytePtr <= bufStart || bytePtr >= bufEnd) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "FreeListAllocator: Attempt to deallocate pointer not owned by this allocator");
         return;
