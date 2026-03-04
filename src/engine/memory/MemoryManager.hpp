@@ -179,6 +179,9 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
     if (it == m_pools.end()) {
         // マスター FreeList からブロック配列を確保する
         using Block = typename PoolAllocator<T, PoolSize>::Block;
+        static_assert(alignof(Block) <= 255,
+                      "PoolAllocator のブロックアライメントは 255 以下でなければなりません "
+                      "(FreeListAllocator は alignment <= 255 のみサポートします)");
         auto& master = m_masterResource->getAllocator();
         void* blockBuf = master.allocate(sizeof(Block) * PoolSize, alignof(Block));
         if (!blockBuf) {

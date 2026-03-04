@@ -201,8 +201,55 @@ void FreeListAllocator<SearchPolicy>::deallocate(void* ptr) {
     }
 
     // ペイロード直前の 1 バイトからパディング量を読み取り、ヘッダを復元する
-    size_t padding = static_cast<size_t>(*(bytePtr - 1));
-    auto* header = reinterpret_cast<BlockHeader*>(bytePtr - padding - sizeof(BlockHeader));
+    // まずこの 1 バイト自体がバッファ範囲内にあることを確認する
+    auto* paddingBytePtr = bytePtr - 1;
+    if (paddingBytePtr < bufStart || paddingBytePtr >= bufEnd) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "FreeListAllocator: Invalid deallocation (padding byte out of range)");
+        return;
+    }
+
+    size_t padding = static_cast<size_t>(*paddingBytePtr);
+    // padding は [1, 255] の範囲であること、かつヘッダ復元時にバッファ先頭を下回らないことを確認
+    if (padding == 0 || padding > 255 ||
+        padding > static_cast<size_t>(bytePtr - bufStart)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "FreeListAllocator: Invalid deallocation (invalid padding value %zu)", padding);
+        return;
+    }
+
+    auto* headerBytes = bytePtr - padding - sizeof(BlockHeader);
+    // 復元したヘッダ自体がバッファ範囲内に収まっていることを確認
+    if (headerBytes < bufStart ||
+        headerBytes + sizeof(BlockHeader) > bufEnd) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "FreeListAllocator: Invalid deallocation (header out of range)");
+        return;
+    }
+
+    auto* header = reinterpret_cast<BlockHeader*>(headerBytes);
+
+    // ヘッダが示すブロック範囲がバッファ境界を越えないことを確認
+    auto* payloadStart = reinterpret_cast<std::byte*>(header) + sizeof(BlockHeader);
+    if (payloadStart >= bufEnd || header->size == 0) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "FreeListAllocator: Invalid deallocation (zero-sized or out-of-range block)");
+        return;
+    }
+    auto* blockEnd = payloadStart + header->size;
+    if (blockEnd > bufEnd) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "FreeListAllocator: Invalid deallocation (block size out of range)");
+        return;
+    }
+
+    // ヘッダとパディングから再構成したペイロードアドレスが ptr と一致することを確認
+    if (payloadStart + padding != bytePtr) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "FreeListAllocator: Invalid deallocation (pointer does not match header)");
+        return;
+    }
+
     if (header->isFree) {
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
                     "FreeListAllocator: Double-free detected");

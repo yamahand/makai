@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <new>
 #include <SDL3/SDL_log.h>
 #include <typeinfo>
 
@@ -119,8 +120,9 @@ PoolAllocator<T, PoolSize>::PoolAllocator()
     , m_ownsBuffer(true)
     , m_backing(nullptr)
 {
-    // ブロック配列を内部 malloc で確保する
-    m_blocks = static_cast<Block*>(std::malloc(sizeof(Block) * PoolSize));
+    // ブロック配列をアライン対応の演算子で確保する（over-aligned 型の UB を防ぐ）
+    m_blocks = static_cast<Block*>(
+        ::operator new(sizeof(Block) * PoolSize, std::align_val_t{alignof(Block)}, std::nothrow));
     if (!m_blocks) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "PoolAllocator<%s>: メモリ確保に失敗しました (%zu 個, %.2f KB)",
@@ -167,7 +169,7 @@ PoolAllocator<T, PoolSize>::~PoolAllocator() {
 
     // ブロック配列をバッキングアロケーターに返却する
     if (m_ownsBuffer) {
-        std::free(m_blocks);
+        ::operator delete(m_blocks, std::align_val_t{alignof(Block)});
     } else if (m_backing) {
         m_backing->deallocate(m_blocks);
     }

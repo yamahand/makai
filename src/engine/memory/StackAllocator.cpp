@@ -10,6 +10,12 @@ StackAllocator::StackAllocator(size_t capacity)
     , m_offset(0)
     , m_ownsBuffer(true)
 {
+    if (!m_buffer) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "StackAllocator: メモリ確保に失敗しました (%zu KB)", capacity / 1024);
+        m_capacity = 0;
+        return;
+    }
     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
                 "StackAllocator: 内部バッファで初期化 (%zu KB)", capacity / 1024);
 }
@@ -32,6 +38,7 @@ StackAllocator::~StackAllocator() {
 
 void* StackAllocator::allocate(size_t size, size_t alignment) {
     if (size == 0) return nullptr;
+    if (!m_buffer) return nullptr;  // malloc 失敗など使用不可状態のガード
 
     // alignment は2のべき乗かつ1以上でなければならない
     if (alignment == 0 || (alignment & (alignment - 1)) != 0) {
