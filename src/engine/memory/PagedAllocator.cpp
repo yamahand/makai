@@ -60,19 +60,18 @@ void* PagedAllocator::allocate(size_t size, size_t alignment) {
         return nullptr;
     }
 
-    // alignment は2のべき乗かつ1以上でなければならない
+    // alignment は 2 のべき乗かつ 1 以上でなければならない
     if (alignment == 0 || (alignment & (alignment - 1)) != 0) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "PagedAllocator: alignment は2のべき乗でなければなりません (%zu)", alignment);
         return nullptr;
     }
 
-    // バッキングアロケーターは alignof(std::max_align_t) までしか保証しないため、
-    // それを超えるアライメント要求は受け付けない
-    if (alignment > alignof(std::max_align_t)) {
+    // FreeListAllocator と同様に、alignment の上限は 255 に制限する
+    if (alignment > 255) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "PagedAllocator: alignment(%zu) がサポート上限(%zu)を超えています",
-                     alignment, alignof(std::max_align_t));
+                     "PagedAllocator: alignment(%zu) がサポート上限(255)を超えています",
+                     alignment);
         return nullptr;
     }
     const size_t capacity = m_pageSize - kHeaderSize;
