@@ -67,6 +67,14 @@ void* PagedAllocator::allocate(size_t size, size_t alignment) {
         return nullptr;
     }
 
+    // バッキングアロケーターは alignof(std::max_align_t) までしか保証しないため、
+    // それを超えるアライメント要求は受け付けない
+    if (alignment > alignof(std::max_align_t)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "PagedAllocator: alignment(%zu) がサポート上限(%zu)を超えています",
+                     alignment, alignof(std::max_align_t));
+        return nullptr;
+    }
     const size_t capacity = m_pageSize - kHeaderSize;
 
     // size がページの収容可能サイズを超えている場合は対応不可
