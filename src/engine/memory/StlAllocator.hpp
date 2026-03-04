@@ -78,7 +78,10 @@ public:
         return !(*this == other);
     }
 
-    // rebind コンストラクタからアクセスできるよう public にする
+    template<typename, typename>
+    friend class StlAllocator;
+
+private:
     Backing* m_backing;
 };
 
