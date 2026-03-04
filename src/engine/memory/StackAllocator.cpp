@@ -76,42 +76,40 @@ void* StackAllocator::allocate(size_t size, size_t alignment) {
 void StackAllocator::deallocate(void* ptr) {
     if (!ptr) return;
 
-    // ptr がバッファ範囲内かつヘッダ（prevOffset, endOffset）を読み取れる位置か確認する
+    // ptr がバッファ範囲内かつヘッダ（prevOffset）を読み取れる位置か確認する
     auto* bytePtr  = static_cast<std::byte*>(ptr);
     auto* bufStart = static_cast<std::byte*>(m_buffer);
     auto* bufEnd   = bufStart + m_capacity;
 
-    // ヘッダとして 2 * sizeof(size_t) バイト（prevOffset, endOffset）がペイロード直前に存在する前提
-    if (bytePtr < bufStart + sizeof(size_t) * 2 || bytePtr > bufEnd) {
+    // ヘッダとして sizeof(size_t) バイト（prevOffset）がペイロード直前に存在する前提
+    if (bytePtr < bufStart + sizeof(size_t) || bytePtr > bufEnd) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "StackAllocator: 範囲外ポインタ %p の解放（バッファ: [%p, %p)）",
                      ptr, static_cast<void*>(bufStart), static_cast<void*>(bufEnd));
         return;
     }
 
-    // ペイロード直前の 2 * sizeof(size_t) バイトに
+    // ペイロード直前の sizeof(size_t) バイトに
     //   [0]: prevOffset（この割り当て前のオフセット）
-    //   [1]: endOffset（この割り当て直後のオフセット）
     // が格納されているものとして読み出す（memcpy でアライメント非依存に）
     size_t prevOffset;
-    size_t endOffset;
-    std::byte* headerPtr = bytePtr - sizeof(size_t) * 2;
+    std::byte* headerPtr = bytePtr - sizeof(size_t);
     std::memcpy(&prevOffset, headerPtr, sizeof(size_t));
-    std::memcpy(&endOffset, headerPtr + sizeof(size_t), sizeof(size_t));
 
     // ヘッダ内容の妥当性チェック
-    if (prevOffset > endOffset || endOffset > m_capacity) {
+    // prevOffset はバッファ先頭から現在の m_offset までの範囲にあるはず
+    if (prevOffset > m_offset || prevOffset > m_capacity) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "StackAllocator: 不正なヘッダ値 prevOffset=%zu, endOffset=%zu",
-                     prevOffset, endOffset);
+                     "StackAllocator: 不正なヘッダ値 prevOffset=%zu (m_offset=%zu, capacity=%zu)",
+                     prevOffset, m_offset, m_capacity);
         return;
     }
 
-    // LIFO 以外の解放を検出するため、現在の m_offset がヘッダに保存された endOffset と一致するか確認
-    if (endOffset != m_offset) {
+    // ptr 自身も、ヘッダを含む現在のスタック範囲内にあることを確認する
+    if (bytePtr < bufStart + prevOffset || bytePtr > bufStart + m_offset) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "StackAllocator: LIFO 順以外での解放検出 (endOffset=%zu, m_offset=%zu)",
-                     endOffset, m_offset);
+                     "StackAllocator: 不正なポインタ %p の解放 (prevOffset=%zu, m_offset=%zu)",
+                     ptr, prevOffset, m_offset);
         return;
     }
 
