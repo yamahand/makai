@@ -1,5 +1,6 @@
 #include "StackAllocator.hpp"
 #include <cstdlib>
+#include <cstring>
 #include <SDL3/SDL_log.h>
 
 namespace mk::memory {
@@ -65,8 +66,8 @@ void* StackAllocator::allocate(size_t size, size_t alignment) {
         return nullptr;
     }
 
-    // ペイロード直前に prevOffset を書き込む
-    *reinterpret_cast<size_t*>(payloadAddr - sizeof(size_t)) = m_offset;
+    // ペイロード直前に prevOffset を書き込む（memcpy でアライメント非依存に）
+    std::memcpy(reinterpret_cast<std::byte*>(payloadAddr) - sizeof(size_t), &m_offset, sizeof(size_t));
 
     m_offset += overhead + size;
     return reinterpret_cast<void*>(payloadAddr);
@@ -87,8 +88,9 @@ void StackAllocator::deallocate(void* ptr) {
         return;
     }
 
-    // ペイロードの直前 sizeof(size_t) バイトに格納された prevOffset を読み出す
-    size_t prevOffset = *reinterpret_cast<size_t*>(bytePtr - sizeof(size_t));
+    // ペイロードの直前 sizeof(size_t) バイトに格納された prevOffset を読み出す（memcpy でアライメント非依存に）
+    size_t prevOffset;
+    std::memcpy(&prevOffset, bytePtr - sizeof(size_t), sizeof(size_t));
 
     // バッファ範囲内の値であることを確認する
     if (prevOffset > m_offset) {
