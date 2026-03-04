@@ -80,7 +80,7 @@ void StackAllocator::deallocate(void* ptr) {
     auto* bufStart = static_cast<std::byte*>(m_buffer);
     auto* bufEnd   = bufStart + m_capacity;
 
-    if (bytePtr < bufStart + sizeof(size_t) || bytePtr > bufEnd) {
+    if (bytePtr <= bufStart + sizeof(size_t) || bytePtr > bufEnd) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "StackAllocator: 範囲外ポインタ %p の解放（バッファ: [%p, %p)）",
                      ptr, static_cast<void*>(bufStart), static_cast<void*>(bufEnd));
