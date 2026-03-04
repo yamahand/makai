@@ -125,8 +125,12 @@ MemoryManager::~MemoryManager() {
     m_frameAllocator.reset();
     m_doubleFrameAllocator.reset();
     m_sceneAllocator.reset();
-    m_masterResource.reset();
 
+    // マスター FreeListAllocator のカウンタをクリアしてからリソース自体を破棄する
+    if (m_masterResource) {
+        m_masterResource->reset();
+        m_masterResource.reset();
+    }
     // マスターバッファを解放する
     if (m_masterBuffer) {
         std::free(m_masterBuffer);
