@@ -147,6 +147,13 @@ void* FreeListAllocator<SearchPolicy>::allocate(size_t size, size_t alignment) {
                      alignment);
         return nullptr;
     }
+    // パディング量を uint8_t 1 バイトに格納するため alignment は 255 以下に制限する
+    if (alignment > 255) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "FreeListAllocator: alignment は 255 以下でなければなりません (%zu)",
+                     alignment);
+        return nullptr;
+    }
 
     const std::byte* bufferEnd = static_cast<std::byte*>(m_buffer) + m_capacity;
     auto result = SearchPolicy::findBlock(static_cast<BlockHeader*>(m_buffer),

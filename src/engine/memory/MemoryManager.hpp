@@ -4,6 +4,7 @@
 #include "FreeListMemoryResource.hpp"
 #include "PoolAllocator.hpp"
 #include "../core/Config.hpp"
+#include <SDL3/SDL_log.h>
 #include <memory_resource>
 #include <unordered_map>
 #include <typeindex>
@@ -170,6 +171,8 @@ private:
 
 template<typename T, size_t PoolSize>
 PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
+    assert(m_masterResource && "MemoryManager::init() が呼ばれていません");
+
     std::type_index typeIdx = typeid(T);
 
     auto it = m_pools.find(typeIdx);
@@ -178,9 +181,15 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
         using Block = typename PoolAllocator<T, PoolSize>::Block;
         auto& master = m_masterResource->getAllocator();
         void* blockBuf = master.allocate(sizeof(Block) * PoolSize, alignof(Block));
+        if (!blockBuf) {
+            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                        "MemoryManager::getPool: ブロック配列の確保に失敗 (型: %s, %zu 個)",
+                        typeid(T).name(), PoolSize);
+        }
         auto* blocks = static_cast<Block*>(blockBuf);
 
         // PoolHolder はブロック配列への参照のみを持つ（小さいオブジェクト）
+        // blocks が nullptr でも PoolAllocator の nullptr ガードで使用不可状態になる
         auto holder = std::make_unique<PoolHolder<T, PoolSize>>(blocks, master);
         auto* poolPtr = &holder->pool;
         m_pools[typeIdx] = std::move(holder);

@@ -183,9 +183,41 @@ void* BuddyAllocator::allocate(size_t size, size_t /*alignment*/) {
 void BuddyAllocator::deallocate(void* ptr) {
     if (!ptr) return;
 
-    void* blockPtr = static_cast<std::byte*>(ptr) - HEADER_SIZE;
-    auto* header   = reinterpret_cast<BlockHeader*>(blockPtr);
-    size_t order   = header->order;
+    // 範囲チェック: ptr がこのアロケーター管理下のバッファ内かどうか確認
+    auto* base    = static_cast<std::byte*>(m_buffer);
+    auto* bytePtr = static_cast<std::byte*>(ptr);
+
+    if (bytePtr < base + HEADER_SIZE || bytePtr >= base + m_capacity) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "BuddyAllocator::deallocate: 無効なポインタ %p (範囲外)", ptr);
+        return;
+    }
+
+    void* blockPtr = bytePtr - HEADER_SIZE;
+    auto* blockBytePtr = static_cast<std::byte*>(blockPtr);
+    if (blockBytePtr < base ||
+        blockBytePtr + sizeof(BlockHeader) > base + m_capacity) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "BuddyAllocator::deallocate: 無効なポインタ %p (ヘッダが範囲外)", ptr);
+        return;
+    }
+
+    auto* header = reinterpret_cast<BlockHeader*>(blockPtr);
+    size_t order = header->order;
+
+    // ヘッダ内容の妥当性チェック
+    if (order < MIN_ORDER || order > MAX_ORDER || blockSize(order) > m_capacity) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "BuddyAllocator::deallocate: 無効なヘッダ %p (order=%zu)", ptr, order);
+        return;
+    }
+
+    // 二重解放防止
+    if (header->isFree) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "BuddyAllocator::deallocate: 二重解放を検出 %p", ptr);
+        return;
+    }
 
     header->isFree = 1;
     m_usedBytes   -= blockSize(order);

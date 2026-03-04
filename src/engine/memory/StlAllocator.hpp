@@ -1,6 +1,8 @@
 #pragma once
 #include <cstddef>
+#include <limits>
 #include <memory>       // std::allocator_traits
+#include <stdexcept>
 #include <type_traits>
 
 namespace mk::memory {
@@ -51,6 +53,10 @@ public:
 
     /// n 個の T を割り当てる
     T* allocate(std::size_t n) {
+        // n * sizeof(T) の乗算オーバーフローを検出する
+        if (sizeof(T) > 0 && n > std::numeric_limits<std::size_t>::max() / sizeof(T)) {
+            throw std::bad_alloc{};
+        }
         void* ptr = m_backing->allocate(n * sizeof(T), alignof(T));
         if (!ptr) {
             throw std::bad_alloc{};

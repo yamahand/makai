@@ -51,11 +51,22 @@ void* PagedAllocator::allocate(size_t size, size_t alignment) {
         return nullptr;
     }
 
+    const size_t capacity = m_pageSize - kHeaderSize;
+
     // size がページの収容可能サイズを超えている場合は対応不可
-    if (size > m_pageSize - kHeaderSize) {
+    if (size > capacity) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "PagedAllocator: 要求サイズ(%zu)がページ収容可能サイズ(%zu)を超えています",
-                     size, m_pageSize - kHeaderSize);
+                     size, capacity);
+        return nullptr;
+    }
+
+    // alignment による最大パディング分（alignment-1）を含めてもページに収まらない場合はエラー
+    // size <= capacity を確認済みなので (capacity - size) はアンダーフローしない
+    if ((alignment - 1) > capacity - size) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "PagedAllocator: 要求サイズ(%zu)とアライメント(%zu)の最大パディングがページ収容可能サイズ(%zu)を超えます",
+                     size, alignment, capacity);
         return nullptr;
     }
 
