@@ -17,6 +17,7 @@ PagedAllocator::PagedAllocator(size_t pageSize, FirstFitAllocator& backing)
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "PagedAllocator: ページサイズ(%zu B)がヘッダサイズ(%zu B)以下のため使用不可",
                      pageSize, kHeaderSize);
+        m_pageSize = 0; // 使用不可状態を明示
         return; // m_head / m_current が nullptr のまま（使用不可状態）
     }
 

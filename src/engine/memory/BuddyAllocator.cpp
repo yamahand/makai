@@ -13,7 +13,8 @@ namespace mk::memory {
 static size_t floorPow2(size_t v) {
     if (v == 0) return 0;
     size_t result = 1;
-    while (result * 2 <= v) result *= 2;
+    // result * 2 は size_t オーバーフローの恐れがあるため result <= v/2 で比較する
+    while (result <= v / 2) result *= 2;
     return result;
 }
 
@@ -257,6 +258,12 @@ void BuddyAllocator::deallocate(void* ptr) {
 }
 
 void BuddyAllocator::reset() {
+    // initBuffer() 失敗時（m_buffer が nullptr）は何もしない
+    if (!m_buffer || m_capacity == 0 || m_order == 0) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "BuddyAllocator::reset: 未初期化状態のためスキップ");
+        return;
+    }
+
     std::memset(m_freeLists, 0, sizeof(m_freeLists));
     m_usedBytes = 0;
 

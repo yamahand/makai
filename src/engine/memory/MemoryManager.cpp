@@ -133,6 +133,12 @@ MemoryManager::~MemoryManager() {
 }
 
 void MemoryManager::onFrameEnd() {
+    // init() 未実行／失敗時はアロケーターが nullptr のためガードする
+    if (!m_frameAllocator || !m_doubleFrameAllocator) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "MemoryManager::onFrameEnd: 未初期化のためスキップ");
+        return;
+    }
+
     size_t usedBytes = m_frameAllocator->getUsedBytes();
     if (usedBytes > 0) {
         m_totalFrameAllocations++;
@@ -151,6 +157,12 @@ void MemoryManager::onFrameEnd() {
 }
 
 void MemoryManager::onSceneChange() {
+    // init() 未実行／失敗時はアロケーターが nullptr のためガードする
+    if (!m_sceneAllocator) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "MemoryManager::onSceneChange: 未初期化のためスキップ");
+        return;
+    }
+
     size_t usedBytes = m_sceneAllocator->getUsedBytes();
     if (usedBytes > 0) {
         m_totalSceneAllocations++;

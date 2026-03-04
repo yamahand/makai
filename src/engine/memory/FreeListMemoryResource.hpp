@@ -1,6 +1,7 @@
 #pragma once
 #include "FreeListAllocator.hpp"
 #include <memory_resource>
+#include <new>      // std::bad_alloc
 
 namespace mk::memory {
 
@@ -42,7 +43,10 @@ public:
 
 protected:
     void* do_allocate(size_t bytes, size_t alignment) override {
-        return m_allocator.allocate(bytes, alignment);
+        void* ptr = m_allocator.allocate(bytes, alignment);
+        // pmr の契約では失敗時に std::bad_alloc を投げる
+        if (!ptr) throw std::bad_alloc{};
+        return ptr;
     }
 
     void do_deallocate(void* ptr, size_t /*bytes*/, size_t /*alignment*/) override {

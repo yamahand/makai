@@ -321,6 +321,10 @@ FreeListAllocator<SearchPolicy>::nextPhysical(BlockHeader* header) const {
 
 template<typename SearchPolicy>
 void FreeListAllocator<SearchPolicy>::splitBlock(BlockHeader* header, size_t size) {
+    // 次ブロックのヘッダが正しく整列されるよう size を alignof(BlockHeader) 倍数に切り上げる
+    const size_t align = alignof(BlockHeader);
+    size = (size + align - 1) & ~(align - 1);
+
     const size_t minSplitSize = sizeof(BlockHeader) + MIN_SPLIT_PAYLOAD;
     if (header->size < size + minSplitSize) return;
 
