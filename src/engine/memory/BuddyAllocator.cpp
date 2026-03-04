@@ -1,6 +1,7 @@
 #include "BuddyAllocator.hpp"
 #include <cstdlib>
 #include <cstring>
+#include <cstdint>
 #include <SDL3/SDL_log.h>
 
 namespace mk::memory {
@@ -72,6 +73,22 @@ void BuddyAllocator::initBuffer() {
     if (!m_buffer || m_capacity < blockSize(MIN_ORDER)) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "BuddyAllocator: バッファサイズが小さすぎます (%zu B)", m_capacity);
+        return;
+    }
+
+    // 返却ポインタは blockPtr + HEADER_SIZE なので、バッファ先頭も HEADER_SIZE 境界にある必要がある
+    if ((reinterpret_cast<std::uintptr_t>(m_buffer) % HEADER_SIZE) != 0) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "BuddyAllocator: バッファ先頭が %zu バイト境界に揃っていません (ptr=%p)",
+                     static_cast<size_t>(HEADER_SIZE), m_buffer);
+
+        // 初期化失敗扱いにする
+        if (m_ownsBuffer) {
+            std::free(m_buffer);
+        }
+        m_buffer   = nullptr;
+        m_capacity = 0;
+        m_order    = 0;
         return;
     }
 
