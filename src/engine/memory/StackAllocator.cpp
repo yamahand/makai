@@ -75,6 +75,7 @@ void* StackAllocator::allocate(size_t size, size_t alignment) {
 
 void StackAllocator::deallocate(void* ptr) {
     if (!ptr) return;
+    if (!m_buffer) return;  // malloc 失敗など使用不可状態のガード（nullptr でポインタ演算を避ける）
 
     // ptr がバッファ範囲内かつヘッダ（prevOffset）を読み取れる位置か確認する
     auto* bytePtr  = static_cast<std::byte*>(ptr);
