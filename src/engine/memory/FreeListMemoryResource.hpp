@@ -41,6 +41,11 @@ public:
     FreeListMemoryResource(const FreeListMemoryResource&)            = delete;
     FreeListMemoryResource& operator=(const FreeListMemoryResource&) = delete;
 
+    // リセット
+    void reset() {
+        m_allocator.reset();
+	}
+
 protected:
     void* do_allocate(size_t bytes, size_t alignment) override {
         void* ptr = m_allocator.allocate(bytes, alignment);
