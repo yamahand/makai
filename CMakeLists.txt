@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.25)
 project(makai VERSION 0.1.0 LANGUAGES CXX)
 
+# Visual Studio でターゲットをフォルダーに整理
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -70,28 +73,43 @@ target_include_directories(imgui_sdl3 PUBLIC
 
 target_link_libraries(imgui_sdl3 PUBLIC SDL3::SDL3)
 
-# ソースファイル収集
-file(GLOB_RECURSE SOURCES
-    "src/*.cpp"
-)
-
-add_executable(${PROJECT_NAME} ${SOURCES})
-
-# Set as startup project in Visual Studio
-set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
-
-target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/external/SDL3_image-3.4.0/include
-)
-
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    SDL3::SDL3
-    SDL3_ttf::SDL3_ttf
-    ${CMAKE_SOURCE_DIR}/external/SDL3_image-3.4.0/lib/x64/SDL3_image.lib
+# SDL 関連ターゲットを Visual Studio の "External" フォルダーにまとめる
+foreach(_target IN ITEMS
+    # SDL3
+    SDL3 SDL3-shared SDL3-static SDL3_test SDL3_Headers
+    # SDL3_ttf
+    SDL3_ttf SDL3_ttf-shared SDL3_ttf-static
+    # SDL3_ttf の依存ライブラリ
+    freetype harfbuzz plutosvg plutovg SDL_uclibc
+    # ImGui
     imgui_sdl3
-    nlohmann_json::nlohmann_json
-    glm::glm
+)
+    if(TARGET ${_target})
+        set_target_properties(${_target} PROPERTIES FOLDER "External")
+    endif()
+endforeach()
+
+# エンジンライブラリ（SDL3・ImGui などの基盤機能）
+add_subdirectory(src/engine)
+
+# ゲーム実行ファイル（game/ + main.cpp）
+file(GLOB_RECURSE GAME_SOURCES
+    "src/game/*.cpp"
+    "src/game/*.hpp"
+    "src/main.cpp"
+)
+
+# Visual Studio フィルター（ディレクトリ構造を反映）
+source_group(TREE ${CMAKE_SOURCE_DIR}/src PREFIX "src" FILES ${GAME_SOURCES})
+
+add_executable(${PROJECT_NAME} ${GAME_SOURCES})
+
+# Visual Studio デバッガーの作業ディレクトリを実行ファイルと同じ場所に設定
+set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY $<TARGET_FILE_DIR:${PROJECT_NAME}>)
+
+# makai_engine の PUBLIC リンク情報が推移的に伝播するため、追加 include/link は不要
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    makai_engine
 )
 
 # Copy SDL3 and SDL3_ttf DLLs to executable directory (Windows only)
@@ -129,3 +147,6 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         ${CMAKE_SOURCE_DIR}/config.json
         $<TARGET_FILE_DIR:${PROJECT_NAME}>/config.json
 )
+
+# Set as startup project in Visual Studio
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
