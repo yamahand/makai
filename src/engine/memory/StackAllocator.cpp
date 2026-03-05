@@ -116,19 +116,18 @@ void StackAllocator::deallocate(void* ptr) {
 
     // 問題なければ、この割り当て前のオフセットに巻き戻す
 #ifndef NDEBUG
-    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                 "StackAllocator: debug ビルドでは deallocate はトップ解放のみを許可します "
-                 "(ptr=%p, prevOffset=%zu, m_offset=%zu)。"
-                 "LIFO 違反によるメモリ破壊を避けるため、この呼び出しではオフセットを巻き戻しません。",
-                 ptr, prevOffset, m_offset);
-    return;
-#else
-    m_offset = prevOffset;
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                "StackAllocator: deallocate 実行 (ptr=%p, prevOffset=%zu -> m_offset=%zu)",
+                ptr, m_offset, prevOffset);
 #endif
+    m_offset = prevOffset;
 }
 
 size_t StackAllocator::alignForward(size_t addr, size_t alignment) {
     return (addr + alignment - 1) & ~(alignment - 1);
 }
 
+size_t StackAllocator::alignForward(size_t addr, size_t alignment) {
+    return (addr + alignment - 1) & ~(alignment - 1);
+}
 } // namespace mk::memory
