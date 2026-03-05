@@ -3,6 +3,9 @@
 #include <new>
 #include <SDL3/SDL_log.h>
 
+// MemoryManager は 64bit 環境専用（MB→byte 変換で size_t オーバーフローを起こさないための前提）
+static_assert(sizeof(size_t) >= 8, "MemoryManager は 64bit 環境でのみ使用可能です");
+
 namespace mk::memory {
 
 MemoryManager& MemoryManager::instance() {
