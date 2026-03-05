@@ -125,7 +125,19 @@ FreeListAllocator<SearchPolicy>::FreeListAllocator(void* buf, size_t capacity)
     , m_allocationCount(0)
     , m_ownsBuffer(false)
 {
-    if (m_buffer && m_capacity > sizeof(BlockHeader)) {
+    if (!buf) {
+        // nullptr バッファ
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "FreeListAllocator: 外部バッファが nullptr です");
+    } else if (reinterpret_cast<std::uintptr_t>(buf) % alignof(BlockHeader) != 0) {
+        // バッファが BlockHeader のアライメント要件を満たさない場合は使用不可にする
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "FreeListAllocator: 外部バッファのアライメントが不正です (required: %zu, addr: 0x%zx)",
+                     alignof(BlockHeader),
+                     static_cast<size_t>(reinterpret_cast<std::uintptr_t>(buf)));
+        m_buffer   = nullptr;
+        m_capacity = 0;
+    } else if (m_capacity > sizeof(BlockHeader)) {
         // バッファ全体を単一のフリーブロックとして初期化
         auto* header         = static_cast<BlockHeader*>(m_buffer);
         header->size         = m_capacity - sizeof(BlockHeader);
@@ -136,10 +148,6 @@ FreeListAllocator<SearchPolicy>::FreeListAllocator(void* buf, size_t capacity)
                     "FreeListAllocator<%s>: Using external buffer %zu bytes (%.2f MB)",
                     typeid(SearchPolicy).name(),
                     m_capacity, m_capacity / (1024.0 * 1024.0));
-    } else if (!buf) {
-        // nullptr バッファ
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "FreeListAllocator: 外部バッファが nullptr です");
     } else {
         // 容量がヘッダ 1 つ分にも満たない場合は使用不可にする
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
