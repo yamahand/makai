@@ -88,6 +88,9 @@ add_executable(${PROJECT_NAME} ${GAME_SOURCES})
 # Set as startup project in Visual Studio
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 
+# Visual Studio デバッガーの作業ディレクトリを実行ファイルと同じ場所に設定
+set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY $<TARGET_FILE_DIR:${PROJECT_NAME}>)
+
 # makai_engine の PUBLIC リンク情報が推移的に伝播するため、追加 include/link は不要
 target_link_libraries(${PROJECT_NAME} PRIVATE
     makai_engine
