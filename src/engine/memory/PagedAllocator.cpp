@@ -1,4 +1,5 @@
 #include "PagedAllocator.hpp"
+#include <cstdint>
 #include <SDL3/SDL_log.h>
 #include <new>
 
@@ -99,17 +100,18 @@ void* PagedAllocator::allocate(size_t size, size_t alignment) {
 
     // アライメント調整して割り当て可能か確認する
     auto tryAlloc = [&](PageHeader* page) -> void* {
-        std::byte* base    = pagePayload(page);
-        size_t     addr    = reinterpret_cast<size_t>(base) + page->offset;
-        size_t     aligned = (addr + alignment - 1) & ~(alignment - 1);
-        size_t     padding = aligned - addr;
-        size_t     needed  = padding + size;
+        std::byte*     raw      = pagePayload(page) + page->offset;
+        // アドレス計算のみ uintptr_t を使用。最終的には元ポインタ + オフセットで返す（整数→ポインタ変換を避ける）
+        std::uintptr_t rawAddr  = reinterpret_cast<std::uintptr_t>(raw);
+        std::uintptr_t aligned  = (rawAddr + alignment - 1) & ~static_cast<std::uintptr_t>(alignment - 1);
+        size_t         padding  = static_cast<size_t>(aligned - rawAddr);
+        size_t         needed   = padding + size;
 
         if (page->offset + needed > page->capacity) return nullptr;
 
         page->offset  += needed;
         m_usedBytes   += needed;
-        return reinterpret_cast<void*>(aligned);
+        return raw + padding;  // ポインタ演算のみ（実装定義の整数→ポインタ変換なし）
     };
 
     // 現ページで割り当てを試みる
