@@ -118,7 +118,7 @@ void StackAllocator::deallocate(void* ptr) {
 #ifndef NDEBUG
     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
                 "StackAllocator: deallocate 実行 (ptr=%p, prevOffset=%zu -> m_offset=%zu)",
-                ptr, m_offset, prevOffset);
+                ptr, prevOffset, m_offset);
 #endif
     m_offset = prevOffset;
 }
