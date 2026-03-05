@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.25)
 project(makai VERSION 0.1.0 LANGUAGES CXX)
 
+# Visual Studio でターゲットをフォルダーに整理
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -70,6 +73,22 @@ target_include_directories(imgui_sdl3 PUBLIC
 
 target_link_libraries(imgui_sdl3 PUBLIC SDL3::SDL3)
 
+# SDL 関連ターゲットを Visual Studio の "External" フォルダーにまとめる
+foreach(_target IN ITEMS
+    # SDL3
+    SDL3 SDL3-shared SDL3-static SDL3_test SDL3_Headers
+    # SDL3_ttf
+    SDL3_ttf SDL3_ttf-shared SDL3_ttf-static
+    # SDL3_ttf の依存ライブラリ
+    freetype harfbuzz plutosvg plutovg SDL_uclibc
+    # ImGui
+    imgui_sdl3
+)
+    if(TARGET ${_target})
+        set_target_properties(${_target} PROPERTIES FOLDER "External")
+    endif()
+endforeach()
+
 # エンジンライブラリ（SDL3・ImGui などの基盤機能）
 add_subdirectory(src/engine)
 
@@ -84,9 +103,6 @@ file(GLOB_RECURSE GAME_SOURCES
 source_group(TREE ${CMAKE_SOURCE_DIR}/src PREFIX "src" FILES ${GAME_SOURCES})
 
 add_executable(${PROJECT_NAME} ${GAME_SOURCES})
-
-# Set as startup project in Visual Studio
-set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 
 # Visual Studio デバッガーの作業ディレクトリを実行ファイルと同じ場所に設定
 set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY $<TARGET_FILE_DIR:${PROJECT_NAME}>)
@@ -131,3 +147,6 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         ${CMAKE_SOURCE_DIR}/config.json
         $<TARGET_FILE_DIR:${PROJECT_NAME}>/config.json
 )
+
+# Set as startup project in Visual Studio
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
