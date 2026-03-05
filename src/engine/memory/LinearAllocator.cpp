@@ -1,4 +1,5 @@
 #include "LinearAllocator.hpp"
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <SDL3/SDL_log.h>
@@ -59,10 +60,11 @@ void* LinearAllocator::allocate(size_t size, size_t alignment) {
         return nullptr;
     }
 
-    // 現在のアドレスをアライメントに合わせる
-    size_t currentAddr = reinterpret_cast<size_t>(m_buffer) + m_offset;
-    size_t alignedAddr = alignForward(currentAddr, alignment);
-    size_t padding = alignedAddr - currentAddr;
+    // 現在のアドレスをアライメントに合わせる（uintptr_t でビット演算、ポインタへは元ポインタ+オフセットで戻す）
+    auto* base = static_cast<std::byte*>(m_buffer) + m_offset;
+    std::uintptr_t baseAddr    = reinterpret_cast<std::uintptr_t>(base);
+    std::uintptr_t alignedAddr = alignForward(baseAddr, alignment);
+    size_t padding = static_cast<size_t>(alignedAddr - baseAddr);
 
     // 必要な総サイズ
     size_t totalSize = padding + size;
@@ -75,8 +77,8 @@ void* LinearAllocator::allocate(size_t size, size_t alignment) {
         return nullptr;
     }
 
-    // ポインタを進める（バンプ割り当て）
-    void* ptr = reinterpret_cast<void*>(alignedAddr);
+    // ポインタを進める（バンプ割り当て）。整数→ポインタ変換を使わずポインタ演算で返す
+    void* ptr = base + padding;
     m_offset += totalSize;
 
     return ptr;
@@ -93,10 +95,10 @@ void LinearAllocator::reset() {
     #endif
 }
 
-size_t LinearAllocator::alignForward(size_t addr, size_t alignment) {
+std::uintptr_t LinearAllocator::alignForward(std::uintptr_t addr, size_t alignment) {
     // アライメントは2の累乗である必要がある
     // (addr + alignment - 1) & ~(alignment - 1)
-    return (addr + (alignment - 1)) & ~(alignment - 1);
+    return (addr + (alignment - 1)) & ~static_cast<std::uintptr_t>(alignment - 1);
 }
 
 } // namespace mk::memory

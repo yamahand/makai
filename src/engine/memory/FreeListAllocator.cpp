@@ -17,10 +17,10 @@ static constexpr size_t MIN_SPLIT_PAYLOAD = 8;
 /// padding は常に [1, alignment] の範囲に収まる（deallocate の調整量格納バイトを確保するため）
 static size_t calcNeeded(FreeListBlockHeader* header, size_t size, size_t alignment) {
     auto* payloadStart = reinterpret_cast<std::byte*>(header) + sizeof(FreeListBlockHeader);
-    size_t addr    = reinterpret_cast<size_t>(payloadStart);
+    std::uintptr_t addr    = reinterpret_cast<std::uintptr_t>(payloadStart);
     // addr+1 以上からアライメントすることで最低1バイトのパディングを保証する
-    size_t aligned = (addr + alignment) & ~(alignment - 1);
-    size_t padding = aligned - addr;  // 常に [1, alignment]
+    std::uintptr_t aligned = (addr + alignment) & ~static_cast<std::uintptr_t>(alignment - 1);
+    size_t padding = static_cast<size_t>(aligned - addr);  // 常に [1, alignment]
     return padding + size;
 }
 

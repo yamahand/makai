@@ -69,7 +69,7 @@ public:
 
 private:
     /// アライメントを調整
-    static size_t alignForward(size_t addr, size_t alignment);
+    static std::uintptr_t alignForward(std::uintptr_t addr, size_t alignment);
 
     void*  m_buffer;   ///< 割り当てバッファ
     size_t m_capacity; ///< 総容量（バイト）
