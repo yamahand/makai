@@ -54,6 +54,13 @@ void* LinearAllocator::allocate(size_t size, size_t alignment) {
         return nullptr;
     }
 
+    // alignment は 2 のべき乗かつ 1 以上でなければならない（他のアロケーターと同じガード）
+    if (alignment == 0 || (alignment & (alignment - 1)) != 0) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "LinearAllocator: alignment は 2 のべき乗でなければなりません (%zu)", alignment);
+        return nullptr;
+    }
+
     if (!m_buffer) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "LinearAllocator: Invalid buffer (null). Allocation request denied.");
