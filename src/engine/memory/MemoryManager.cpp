@@ -1,5 +1,6 @@
 #include "MemoryManager.hpp"
 #include <cstdlib>
+#include <new>
 #include <SDL3/SDL_log.h>
 
 namespace mk::memory {
@@ -78,35 +79,51 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
                 "MemoryManager: マスターバッファ %zu MB を %p に確保",
                 totalSize / (1024 * 1024), mgr.m_masterBuffer);
 
-    // マスター FreeList がバッファ全体を管理する
-    mgr.m_masterResource = std::make_unique<FirstFitMemoryResource>(mgr.m_masterBuffer, totalSize);
-    auto& master = mgr.m_masterResource->getAllocator();
-
-    // 各サブアロケーターはマスター FreeList からバッファを借りる
-    // （払い出したバッファは永続使用のため deallocate しない）
-    void* frameBuf = master.allocate(frameSize,        alignof(std::max_align_t));
-    void* dframe0  = master.allocate(doubleFrameSize,  alignof(std::max_align_t));
-    void* dframe1  = master.allocate(doubleFrameSize,  alignof(std::max_align_t));
-    void* sceneBuf = master.allocate(sceneSize,        alignof(std::max_align_t));
-
-    // いずれかのサブアロケーター用バッファ確保に失敗した場合は即座に失敗として処理する
-    if (!frameBuf || !dframe0 || !dframe1 || !sceneBuf) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "MemoryManager: サブアロケーター用バッファの確保に失敗");
+    // make_unique は bad_alloc を投げ得る。
+    // 例外発生時に masterBuffer リーク＋次回 init 不可を防ぐため try/catch で包む。
+    auto rollback = [&]() {
+        mgr.m_frameAllocator.reset();
+        mgr.m_doubleFrameAllocator.reset();
+        mgr.m_sceneAllocator.reset();
         mgr.m_masterResource.reset();
         std::free(mgr.m_masterBuffer);
         mgr.m_masterBuffer = nullptr;
         mgr.m_masterSize   = 0;
+    };
+
+    try {
+        // マスター FreeList がバッファ全体を管理する
+        mgr.m_masterResource = std::make_unique<FirstFitMemoryResource>(mgr.m_masterBuffer, totalSize);
+        auto& master = mgr.m_masterResource->getAllocator();
+
+        // 各サブアロケーターはマスター FreeList からバッファを借りる
+        // （払い出したバッファは永続使用のため deallocate しない）
+        void* frameBuf = master.allocate(frameSize,        alignof(std::max_align_t));
+        void* dframe0  = master.allocate(doubleFrameSize,  alignof(std::max_align_t));
+        void* dframe1  = master.allocate(doubleFrameSize,  alignof(std::max_align_t));
+        void* sceneBuf = master.allocate(sceneSize,        alignof(std::max_align_t));
+
+        // いずれかのサブアロケーター用バッファ確保に失敗した場合は即座に失敗として処理する
+        if (!frameBuf || !dframe0 || !dframe1 || !sceneBuf) {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                         "MemoryManager: サブアロケーター用バッファの確保に失敗");
+            rollback();
+            return false;
+        }
+
+        mgr.m_frameAllocator = std::make_unique<LinearAllocator>(frameBuf, frameSize);
+        mgr.m_doubleFrameAllocator = std::make_unique<DoubleFrameAllocator>(
+            dframe0, doubleFrameSize, dframe1, doubleFrameSize);
+        mgr.m_sceneAllocator = std::make_unique<LinearAllocator>(sceneBuf, sceneSize);
+
+        // サブアロケーター予約分を記録（ヒープ統計の補正に使う）
+        mgr.m_subAllocatorReservedBytes = master.getUsedBytes();
+    } catch (const std::bad_alloc& e) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "MemoryManager: bad_alloc 例外によりリソース確保に失敗: %s", e.what());
+        rollback();
         return false;
     }
-
-    mgr.m_frameAllocator = std::make_unique<LinearAllocator>(frameBuf, frameSize);
-    mgr.m_doubleFrameAllocator = std::make_unique<DoubleFrameAllocator>(
-        dframe0, doubleFrameSize, dframe1, doubleFrameSize);
-    mgr.m_sceneAllocator = std::make_unique<LinearAllocator>(sceneBuf, sceneSize);
-
-    // サブアロケーター予約分を記録（ヒープ統計の補正に使う）
-    mgr.m_subAllocatorReservedBytes = master.getUsedBytes();
 
     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
                 "MemoryManager: サブアロケーター予約 %zu MB / ヒープ残余 %zu MB",
