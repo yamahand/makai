@@ -70,28 +70,27 @@ target_include_directories(imgui_sdl3 PUBLIC
 
 target_link_libraries(imgui_sdl3 PUBLIC SDL3::SDL3)
 
-# ソースファイル収集
-file(GLOB_RECURSE SOURCES
-    "src/*.cpp"
+# エンジンライブラリ（SDL3・ImGui などの基盤機能）
+add_subdirectory(src/engine)
+
+# ゲーム実行ファイル（game/ + main.cpp）
+file(GLOB_RECURSE GAME_SOURCES
+    "src/game/*.cpp"
+    "src/game/*.hpp"
+    "src/main.cpp"
 )
 
-add_executable(${PROJECT_NAME} ${SOURCES})
+# Visual Studio フィルター（ディレクトリ構造を反映）
+source_group(TREE ${CMAKE_SOURCE_DIR}/src PREFIX "src" FILES ${GAME_SOURCES})
+
+add_executable(${PROJECT_NAME} ${GAME_SOURCES})
 
 # Set as startup project in Visual Studio
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 
-target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/external/SDL3_image-3.4.0/include
-)
-
+# makai_engine の PUBLIC リンク情報が推移的に伝播するため、追加 include/link は不要
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    SDL3::SDL3
-    SDL3_ttf::SDL3_ttf
-    ${CMAKE_SOURCE_DIR}/external/SDL3_image-3.4.0/lib/x64/SDL3_image.lib
-    imgui_sdl3
-    nlohmann_json::nlohmann_json
-    glm::glm
+    makai_engine
 )
 
 # Copy SDL3 and SDL3_ttf DLLs to executable directory (Windows only)
