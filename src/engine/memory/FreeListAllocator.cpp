@@ -59,8 +59,14 @@ FreeListSearchResult BestFitPolicy::findBlock(FreeListBlockHeader* first,
             size_t needed = calcNeeded(header, size, alignment);
             if (header->size >= needed) {
                 // 余剰が最も小さいブロックを選ぶ
-                if (!best.header || header->size < best.header->size) {
+                size_t surplus = header->size - needed;
+                if (!best.header) {
                     best = { header, needed };
+                } else {
+                    size_t bestSurplus = best.header->size - best.needed;
+                    if (surplus < bestSurplus) {
+                        best = { header, needed };
+                    }
                 }
             }
         }
