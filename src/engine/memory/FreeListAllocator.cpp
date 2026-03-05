@@ -122,7 +122,16 @@ FreeListAllocator<SearchPolicy>::FreeListAllocator(void* buf, size_t capacity)
         header->size         = m_capacity - sizeof(BlockHeader);
         header->isFree       = true;
         header->prevPhysical = nullptr;
-    } else if (m_buffer) {
+
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "FreeListAllocator<%s>: Using external buffer %zu bytes (%.2f MB)",
+                    typeid(SearchPolicy).name(),
+                    m_capacity, m_capacity / (1024.0 * 1024.0));
+    } else if (!buf) {
+        // nullptr バッファ
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "FreeListAllocator: 外部バッファが nullptr です");
+    } else {
         // 容量がヘッダ 1 つ分にも満たない場合は使用不可にする
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "FreeListAllocator: バッファ容量 (%zu B) が小さすぎます (最低 %zu B 必要)",
@@ -130,10 +139,6 @@ FreeListAllocator<SearchPolicy>::FreeListAllocator(void* buf, size_t capacity)
         m_buffer   = nullptr;
         m_capacity = 0;
     }
-    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
-                "FreeListAllocator<%s>: Using external buffer %zu bytes (%.2f MB)",
-                typeid(SearchPolicy).name(),
-                m_capacity, m_capacity / (1024.0 * 1024.0));
 }
 
 template<typename SearchPolicy>
