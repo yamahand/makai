@@ -1,23 +1,28 @@
 #pragma once
+#include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 
 namespace mk::memory {
 
 /// StackAllocator（スタック型アロケーター）
 ///
-/// LinearAllocator の変形で、LIFO 順の個別解放に対応する。
-/// 各割り当ての直前に prevOffset を埋め込み、deallocate() でその地点まで巻き戻す。
+/// バンプアロケーターにマーカー機能を加えた、LIFO 単位の一括解放に対応するアロケーター。
 ///
 /// - allocate(): O(1)
-/// - deallocate(): O(1)、ただし LIFO 順でのみ正しく動作する
-/// - mark() / rewindTo() で任意の地点への一括巻き戻しも可能
+/// - deallocate(): 使用不可（assert で停止）。解放は pushMarker/popMarker または reset() を使うこと
+/// - pushMarker() / popMarker() でネストした任意地点への一括巻き戻しが可能
+/// - mark() / rewindTo() でオフセット値を直接扱う低レベル API も提供
 ///
 /// 用途:
 /// - 関数呼び出し単位の一時バッファ（AI 計算、経路探索など）
 /// - ネストした一時割り当て
 class StackAllocator {
 public:
+    /// マーカースタックの最大ネスト深度
+    static constexpr size_t MAX_MARKER_DEPTH = 32;
+
     /// コンストラクタ（内部 malloc 版）
     explicit StackAllocator(size_t capacity);
 
@@ -28,23 +33,34 @@ public:
     ~StackAllocator();
 
     /// メモリを割り当てる
-    /// 割り当て直前に prevOffset をペイロードの手前に埋め込む
     /// @param size      割り当てるバイト数
-    /// @param alignment アライメント（デフォルト: 16バイト）
+    /// @param alignment アライメント（デフォルト: 16バイト、2のべき乗必須）
     /// @return 割り当てられたメモリへのポインタ（失敗時は nullptr）
     void* allocate(size_t size, size_t alignment = 16);
 
-    /// 個別解放（LIFO 順でのみ正しく動作する）
-    /// 最後に allocate() したポインタから順に解放すること
+    /// 個別解放は非サポート。呼び出すと assert で停止する。
+    /// 解放には pushMarker()/popMarker() または reset() を使うこと。
     void deallocate(void* ptr);
 
     /// 全割り当てを無効化してオフセットを 0 に戻す
-    void reset() { m_offset = 0; }
+    void reset() { m_offset = 0; m_markerDepth = 0; }
 
-    /// 現在のオフセットをマーカーとして返す
+    // ─── マーカー API（内部スタック管理） ───────────────────
+
+    /// 現在のオフセットを内部スタックに保存する
+    /// @note ネスト深度が MAX_MARKER_DEPTH を超えると失敗（エラーログ出力 + 無視）
+    void pushMarker();
+
+    /// 最後に pushMarker() した地点まで巻き戻す
+    /// @note pushMarker() と対になって呼ぶこと。スタックが空の場合はエラー
+    void popMarker();
+
+    // ─── マーカー API（外部値管理・低レベル） ────────────────
+
+    /// 現在のオフセットをマーカー値として返す
     size_t mark() const { return m_offset; }
 
-    /// マーカーまで一括巻き戻し（mark() 以降の割り当てをすべて無効化）
+    /// 指定したマーカー値まで一括巻き戻す（mark() 以降の割り当てをすべて無効化）
     void rewindTo(size_t marker) {
         if (marker <= m_offset) m_offset = marker;
     }
@@ -65,12 +81,16 @@ public:
     StackAllocator& operator=(const StackAllocator&) = delete;
 
 private:
-    static size_t alignForward(size_t addr, size_t alignment);
+    static std::uintptr_t alignForward(std::uintptr_t addr, size_t alignment);
 
     void*  m_buffer;
     size_t m_capacity;
     size_t m_offset;
     bool   m_ownsBuffer;
+
+    /// 内部マーカースタック
+    size_t m_markerStack[MAX_MARKER_DEPTH];
+    size_t m_markerDepth = 0;
 };
 
 } // namespace mk::memory

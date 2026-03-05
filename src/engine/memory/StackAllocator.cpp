@@ -1,7 +1,6 @@
 #include "StackAllocator.hpp"
 #include <cstdint>
 #include <cstdlib>
-#include <cstring>
 #include <SDL3/SDL_log.h>
 
 namespace mk::memory {
@@ -11,6 +10,7 @@ StackAllocator::StackAllocator(size_t capacity)
     , m_capacity(capacity)
     , m_offset(0)
     , m_ownsBuffer(true)
+    , m_markerDepth(0)
 {
     if (!m_buffer) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
@@ -27,6 +27,7 @@ StackAllocator::StackAllocator(void* buf, size_t capacity)
     , m_capacity(capacity)
     , m_offset(0)
     , m_ownsBuffer(false)
+    , m_markerDepth(0)
 {
     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
                 "StackAllocator: 外部バッファで初期化 (%zu KB)", capacity / 1024);
@@ -40,7 +41,7 @@ StackAllocator::~StackAllocator() {
 
 void* StackAllocator::allocate(size_t size, size_t alignment) {
     if (size == 0) return nullptr;
-    if (!m_buffer) return nullptr;  // malloc 失敗など使用不可状態のガード
+    if (!m_buffer) return nullptr;
 
     // alignment は2のべき乗かつ1以上でなければならない
     if (alignment == 0 || (alignment & (alignment - 1)) != 0) {
@@ -49,88 +50,54 @@ void* StackAllocator::allocate(size_t size, size_t alignment) {
         return nullptr;
     }
 
-    // ペイロードの直前に prevOffset (size_t) を格納する。
-    // レイアウト: [...パディング...][prevOffset: size_t][ペイロード]
-    //                                                   ↑ここを返す
-    //
-    // アライメント計算は uintptr_t（ポインタ→整数は定義済み）で行い、
-    // 最終ポインタは m_buffer 基点のポインタ演算で構築する（整数→ポインタ変換を避ける）
-
+    // アライメント計算は uintptr_t で行い、返却ポインタは元ポインタ + オフセットで構築する
+    // （整数→ポインタ変換を避ける。prevOffset ヘッダは持たない）
     auto* base = static_cast<std::byte*>(m_buffer) + m_offset;
     std::uintptr_t baseAddr    = reinterpret_cast<std::uintptr_t>(base);
-    std::uintptr_t payloadAddr = (baseAddr + sizeof(size_t) + alignment - 1)
+    std::uintptr_t alignedAddr = (baseAddr + alignment - 1)
                                  & ~static_cast<std::uintptr_t>(alignment - 1);
-    size_t overhead = static_cast<size_t>(payloadAddr - baseAddr); // パディング + prevOffset スロット分
+    size_t padding = static_cast<size_t>(alignedAddr - baseAddr);
 
-    if (m_offset + overhead + size > m_capacity) {
+    if (m_offset + padding + size > m_capacity) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "StackAllocator: メモリ不足 (要求: %zu B, 残余: %zu B)",
-                     overhead + size, m_capacity - m_offset);
+                     padding + size, m_capacity - m_offset);
         return nullptr;
     }
 
-    // ペイロードポインタを元ポインタ + オフセットで構築（整数→ポインタ変換なし）
-    std::byte* payloadPtr = base + overhead;
-
-    // prevOffset をペイロード直前に書き込む（memcpy でアライメント非依存に）
-    std::memcpy(payloadPtr - sizeof(size_t), &m_offset, sizeof(size_t));
-
-    m_offset += overhead + size;
-    return payloadPtr;
+    m_offset += padding + size;
+    return base + padding;
 }
 
-void StackAllocator::deallocate(void* ptr) {
-    if (!ptr) return;
-    if (!m_buffer) return;  // malloc 失敗など使用不可状態のガード（nullptr でポインタ演算を避ける）
-
-    // ptr がバッファ範囲内かつヘッダ（prevOffset）を読み取れる位置か確認する
-    auto* bytePtr  = static_cast<std::byte*>(ptr);
-    auto* bufStart = static_cast<std::byte*>(m_buffer);
-    auto* bufEnd   = bufStart + m_capacity;
-
-    // ヘッダとして sizeof(size_t) バイト（prevOffset）がペイロード直前に存在する前提
-    if (bytePtr < bufStart + sizeof(size_t) || bytePtr >= bufEnd) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "StackAllocator: 範囲外ポインタ %p の解放（バッファ: [%p, %p)）",
-                     ptr, static_cast<void*>(bufStart), static_cast<void*>(bufEnd));
-        return;
-    }
-
-    // ペイロード直前の sizeof(size_t) バイトに
-    //   [0]: prevOffset（この割り当て前のオフセット）
-    // が格納されているものとして読み出す（memcpy でアライメント非依存に）
-    size_t prevOffset;
-    std::byte* headerPtr = bytePtr - sizeof(size_t);
-    std::memcpy(&prevOffset, headerPtr, sizeof(size_t));
-
-    // ヘッダ内容の妥当性チェック
-    // prevOffset はバッファ先頭から現在の m_offset までの範囲にあるはず
-    if (prevOffset > m_offset || prevOffset > m_capacity) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "StackAllocator: 不正なヘッダ値 prevOffset=%zu (m_offset=%zu, capacity=%zu)",
-                     prevOffset, m_offset, m_capacity);
-        return;
-    }
-
-    // ptr 自身も、ヘッダを含む現在のスタック範囲内にあることを確認する
-    if (bytePtr < bufStart + prevOffset || bytePtr >= bufStart + m_offset) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "StackAllocator: 不正なポインタ %p の解放 (prevOffset=%zu, m_offset=%zu)",
-                     ptr, prevOffset, m_offset);
-        return;
-    }
-
-    // 問題なければ、この割り当て前のオフセットに巻き戻す
-#ifndef NDEBUG
-    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
-                "StackAllocator: deallocate 実行 (ptr=%p, prevOffset=%zu -> m_offset=%zu)",
-                ptr, prevOffset, m_offset);
-#endif
-    m_offset = prevOffset;
+void StackAllocator::deallocate(void* /*ptr*/) {
+    // StackAllocator は個別解放をサポートしない。
+    // 解放には pushMarker()/popMarker() または reset() を使うこと。
+    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                 "StackAllocator::deallocate() は使用禁止です。pushMarker/popMarker または reset() を使ってください。");
+    assert(false && "StackAllocator::deallocate() is not supported");
 }
 
-size_t StackAllocator::alignForward(size_t addr, size_t alignment) {
-    return (addr + alignment - 1) & ~(alignment - 1);
+void StackAllocator::pushMarker() {
+    if (m_markerDepth >= MAX_MARKER_DEPTH) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "StackAllocator::pushMarker: マーカースタックが満杯です (最大 %zu 段)",
+                     MAX_MARKER_DEPTH);
+        return;
+    }
+    m_markerStack[m_markerDepth++] = m_offset;
+}
+
+void StackAllocator::popMarker() {
+    if (m_markerDepth == 0) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "StackAllocator::popMarker: マーカースタックが空です");
+        return;
+    }
+    m_offset = m_markerStack[--m_markerDepth];
+}
+
+std::uintptr_t StackAllocator::alignForward(std::uintptr_t addr, size_t alignment) {
+    return (addr + alignment - 1) & ~static_cast<std::uintptr_t>(alignment - 1);
 }
 
 } // namespace mk::memory
