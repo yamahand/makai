@@ -15,9 +15,15 @@ namespace mk::memory {
 /// - スクラッチバッファ
 class LinearAllocator {
 public:
-    /// コンストラクタ
+    /// コンストラクタ（内部 malloc 版）
     /// @param capacity 割り当て可能な総バイト数
     explicit LinearAllocator(size_t capacity);
+
+    /// コンストラクタ（外部バッファ版）
+    /// バッファの所有権は呼び出し側が持つ（デストラクタで free しない）
+    /// @param buf  外部から提供されるバッファ
+    /// @param capacity バッファのバイト数
+    LinearAllocator(void* buf, size_t capacity);
 
     /// デストラクタ（メモリを解放）
     ~LinearAllocator();
@@ -36,6 +42,16 @@ public:
     /// 全ての割り当てを無効化する
     void reset();
 
+    /// 現在のオフセットをマーカーとして返す
+    /// rewindTo() に渡すことでその時点まで巻き戻せる
+    size_t mark() const { return m_offset; }
+
+    /// マーカーが示す位置までオフセットを巻き戻す
+    /// @param marker mark() で取得した値
+    void rewindTo(size_t marker) {
+        if (marker <= m_offset) m_offset = marker;
+    }
+
     /// 現在使用中のバイト数を取得
     size_t getUsedBytes() const { return m_offset; }
 
@@ -53,11 +69,12 @@ public:
 
 private:
     /// アライメントを調整
-    static size_t alignForward(size_t addr, size_t alignment);
+    static std::uintptr_t alignForward(std::uintptr_t addr, size_t alignment);
 
     void*  m_buffer;   ///< 割り当てバッファ
     size_t m_capacity; ///< 総容量（バイト）
     size_t m_offset;   ///< 現在のオフセット（バイト）
+    bool   m_ownsBuffer; ///< true のとき デストラクタで free する
 };
 
 } // namespace mk::memory

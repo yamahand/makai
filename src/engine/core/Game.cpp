@@ -14,6 +14,11 @@ Game::Game() {
     // 設定ファイルを読み込む
     m_config = Config::load("config.json");
 
+    // メモリマネージャーを最初に初期化（マスターバッファを確保）
+    if (!memory::MemoryManager::init(m_config.memory)) {
+        throw std::runtime_error("MemoryManager initialization failed");
+    }
+
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
         throw std::runtime_error(std::string("SDL_Init failed: ") + SDL_GetError());
     }
@@ -156,6 +161,18 @@ void Game::renderImGui() {
                     stats.sceneCapacity / (1024.0f * 1024.0f),
                     stats.sceneUsageRatio * 100.0f);
         ImGui::ProgressBar(stats.sceneUsageRatio, ImVec2(-1, 0));
+
+        ImGui::Separator();
+
+        // ヒープアロケーター（FreeList）
+        ImGui::Text("Heap Allocator (FreeList):");
+        ImGui::Text("  %.2f / %.2f MB (%.1f%%)",
+                    stats.heapBytes / (1024.0f * 1024.0f),
+                    stats.heapCapacity / (1024.0f * 1024.0f),
+                    stats.heapUsageRatio * 100.0f);
+        ImGui::ProgressBar(stats.heapUsageRatio, ImVec2(-1, 0));
+        ImGui::Text("  Allocs: %zu  Free blocks: %zu",
+                    stats.heapAllocationCount, stats.heapFreeBlockCount);
 
         ImGui::Separator();
 

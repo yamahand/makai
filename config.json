@@ -16,6 +16,12 @@
       "size": 32
     }
   },
+  "memory": {
+    "frame_allocator_mb": 4,
+    "scene_allocator_mb": 16,
+    "heap_allocator_mb": 32,
+    "double_frame_allocator_mb": 4
+  },
   "game": {
     "time_scale": 0.5,
     "starting_money": 10000,

@@ -1,5 +1,14 @@
 # makai — Copilot Instructions
 
+## Environment
+
+- **OS:** Windows 10/11 64-bit only
+- **Architecture:** x86-64 (32-bit is not supported)
+- **Compiler:** MSVC 2022 (C++20)
+- **CMake:** 3.20+
+
+> Some modules (e.g., `MemoryManager`) enforce `static_assert(sizeof(size_t) >= 8)` and will not compile on 32-bit targets.
+
 ## Build
 
 ```bash
