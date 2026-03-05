@@ -21,7 +21,7 @@ namespace mk::memory {
 /// Game::Game() の先頭で init(config.memory) を呼ぶ必要がある。
 ///
 /// 起動時に単一のマスターバッファを確保し、各アロケーターに分配する。
-/// （OS の malloc 呼び出しはこの 1 回のみ）
+/// （マスターバッファの OS への malloc 呼び出しはこの 1 回のみであり、他に new や標準コンテナ等による動的確保が発生する可能性はある）
 ///
 /// 使い方:
 ///   if (!MemoryManager::init(config.memory)) {
