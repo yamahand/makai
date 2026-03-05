@@ -14,12 +14,15 @@ static constexpr size_t MIN_SPLIT_PAYLOAD = 8;
 // ─────────────────────────────────────────────
 
 /// アライメントパディングを計算するヘルパー
-/// padding は常に [1, alignment] の範囲に収まる（deallocate の調整量格納バイトを確保するため）
+/// padding は [1, alignment] の範囲（r = addr % alignment とすると padding = alignment - r）
+/// ※ r == 0（既にアライン済み）でも最低 1 バイトのパディングを確保する（deallocate 用）
 static size_t calcNeeded(FreeListBlockHeader* header, size_t size, size_t alignment) {
     auto* payloadStart = reinterpret_cast<std::byte*>(header) + sizeof(FreeListBlockHeader);
     std::uintptr_t addr    = reinterpret_cast<std::uintptr_t>(payloadStart);
-    // addr+1 以上からアライメントすることで最低1バイトのパディングを保証する
-    std::uintptr_t aligned = (addr + alignment) & ~static_cast<std::uintptr_t>(alignment - 1);
+    // 標準アライメント計算。addr が既にアライン済みの場合は aligned == addr になるため、
+    // alignment を加算して最低 1 バイトのパディングを明示的に確保する。
+    std::uintptr_t aligned = (addr + alignment - 1) & ~static_cast<std::uintptr_t>(alignment - 1);
+    if (aligned == addr) aligned += alignment;
     size_t padding = static_cast<size_t>(aligned - addr);  // 常に [1, alignment]
     return padding + size;
 }
