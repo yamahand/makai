@@ -44,7 +44,7 @@ public:
     // リセット
     void reset() {
         m_allocator.reset();
-	}
+    }
 
 protected:
     void* do_allocate(size_t bytes, size_t alignment) override {
