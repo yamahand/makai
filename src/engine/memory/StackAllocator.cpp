@@ -127,7 +127,4 @@ size_t StackAllocator::alignForward(size_t addr, size_t alignment) {
     return (addr + alignment - 1) & ~(alignment - 1);
 }
 
-size_t StackAllocator::alignForward(size_t addr, size_t alignment) {
-    return (addr + alignment - 1) & ~(alignment - 1);
-}
 } // namespace mk::memory
