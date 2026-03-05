@@ -8,21 +8,26 @@ namespace mk::memory {
 
 /// StackAllocator（スタック型アロケーター）
 ///
-/// バンプアロケーターにマーカー機能を加えた、LIFO 単位の一括解放に対応するアロケーター。
+/// 純粋なバンプアロケーター。マーカーを使った LIFO 一括解放をサポートする。
 ///
 /// - allocate(): O(1)
-/// - deallocate(): 使用不可（assert で停止）。解放は pushMarker/popMarker または reset() を使うこと
-/// - pushMarker() / popMarker() でネストした任意地点への一括巻き戻しが可能
-/// - mark() / rewindTo() でオフセット値を直接扱う低レベル API も提供
+/// - deallocate(): 使用不可（assert で停止）。解放は StackAllocatorMarker または reset() を使うこと
+/// - mark() / rewindTo() で任意地点への一括巻き戻しが可能
+///
+/// ## 推奨パターン（RAII スコープガード）
+/// ```cpp
+/// {
+///     StackAllocatorMarker marker(stackAllocator);  // 現在地を保存
+///     void* p = stackAllocator.allocate(256);
+///     // ... 処理 ...
+/// }  // スコープ終了で自動 rewind
+/// ```
 ///
 /// 用途:
 /// - 関数呼び出し単位の一時バッファ（AI 計算、経路探索など）
 /// - ネストした一時割り当て
 class StackAllocator {
 public:
-    /// マーカースタックの最大ネスト深度
-    static constexpr size_t MAX_MARKER_DEPTH = 32;
-
     /// コンストラクタ（内部 malloc 版）
     explicit StackAllocator(size_t capacity);
 
@@ -39,23 +44,13 @@ public:
     void* allocate(size_t size, size_t alignment = 16);
 
     /// 個別解放は非サポート。呼び出すと assert で停止する。
-    /// 解放には pushMarker()/popMarker() または reset() を使うこと。
+    /// 解放には StackAllocatorMarker または reset() を使うこと。
     void deallocate(void* ptr);
 
     /// 全割り当てを無効化してオフセットを 0 に戻す
-    void reset() { m_offset = 0; m_markerDepth = 0; }
+    void reset() { m_offset = 0; }
 
-    // ─── マーカー API（内部スタック管理） ───────────────────
-
-    /// 現在のオフセットを内部スタックに保存する
-    /// @note ネスト深度が MAX_MARKER_DEPTH を超えると失敗（エラーログ出力 + 無視）
-    void pushMarker();
-
-    /// 最後に pushMarker() した地点まで巻き戻す
-    /// @note pushMarker() と対になって呼ぶこと。スタックが空の場合はエラー
-    void popMarker();
-
-    // ─── マーカー API（外部値管理・低レベル） ────────────────
+    // ─── マーカー API ──────────────────────────────────────
 
     /// 現在のオフセットをマーカー値として返す
     size_t mark() const { return m_offset; }
@@ -87,10 +82,33 @@ private:
     size_t m_capacity;
     size_t m_offset;
     bool   m_ownsBuffer;
+};
 
-    /// 内部マーカースタック
-    size_t m_markerStack[MAX_MARKER_DEPTH];
-    size_t m_markerDepth = 0;
+/// StackAllocator の RAII スコープガード
+///
+/// コンストラクタで現在地（mark）を保存し、デストラクタで自動的に rewind する。
+/// スコープを抜けると（例外時も含め）確保した領域が一括解放される。
+///
+/// ```cpp
+/// {
+///     StackAllocatorMarker marker(allocator);
+///     void* p = allocator.allocate(1024);
+/// }  // ← ここで自動 rewind
+/// ```
+class StackAllocatorMarker {
+public:
+    explicit StackAllocatorMarker(StackAllocator& allocator)
+        : m_allocator(allocator), m_marker(allocator.mark()) {}
+
+    ~StackAllocatorMarker() { m_allocator.rewindTo(m_marker); }
+
+    // コピー・ムーブ禁止（二重 rewind 防止）
+    StackAllocatorMarker(const StackAllocatorMarker&) = delete;
+    StackAllocatorMarker& operator=(const StackAllocatorMarker&) = delete;
+
+private:
+    StackAllocator& m_allocator;
+    size_t          m_marker;
 };
 
 } // namespace mk::memory

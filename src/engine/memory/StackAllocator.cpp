@@ -10,7 +10,6 @@ StackAllocator::StackAllocator(size_t capacity)
     , m_capacity(capacity)
     , m_offset(0)
     , m_ownsBuffer(true)
-    , m_markerDepth(0)
 {
     if (!m_buffer) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
@@ -27,7 +26,6 @@ StackAllocator::StackAllocator(void* buf, size_t capacity)
     , m_capacity(capacity)
     , m_offset(0)
     , m_ownsBuffer(false)
-    , m_markerDepth(0)
 {
     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
                 "StackAllocator: 外部バッファで初期化 (%zu KB)", capacity / 1024);
@@ -71,29 +69,10 @@ void* StackAllocator::allocate(size_t size, size_t alignment) {
 
 void StackAllocator::deallocate(void* /*ptr*/) {
     // StackAllocator は個別解放をサポートしない。
-    // 解放には pushMarker()/popMarker() または reset() を使うこと。
+    // 解放には StackAllocatorMarker または reset() を使うこと。
     SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                 "StackAllocator::deallocate() は使用禁止です。pushMarker/popMarker または reset() を使ってください。");
+                 "StackAllocator::deallocate() は使用禁止です。StackAllocatorMarker または reset() を使ってください。");
     assert(false && "StackAllocator::deallocate() is not supported");
-}
-
-void StackAllocator::pushMarker() {
-    if (m_markerDepth >= MAX_MARKER_DEPTH) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "StackAllocator::pushMarker: マーカースタックが満杯です (最大 %zu 段)",
-                     MAX_MARKER_DEPTH);
-        return;
-    }
-    m_markerStack[m_markerDepth++] = m_offset;
-}
-
-void StackAllocator::popMarker() {
-    if (m_markerDepth == 0) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "StackAllocator::popMarker: マーカースタックが空です");
-        return;
-    }
-    m_offset = m_markerStack[--m_markerDepth];
 }
 
 std::uintptr_t StackAllocator::alignForward(std::uintptr_t addr, size_t alignment) {
