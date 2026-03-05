@@ -85,8 +85,4 @@ void StackAllocator::deallocate(void* /*ptr*/) {
     assert(false && "StackAllocator::deallocate() is not supported");
 }
 
-std::uintptr_t StackAllocator::alignForward(std::uintptr_t addr, size_t alignment) {
-    return (addr + alignment - 1) & ~static_cast<std::uintptr_t>(alignment - 1);
-}
-
 } // namespace mk::memory

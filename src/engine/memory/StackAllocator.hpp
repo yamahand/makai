@@ -76,8 +76,6 @@ public:
     StackAllocator& operator=(const StackAllocator&) = delete;
 
 private:
-    static std::uintptr_t alignForward(std::uintptr_t addr, size_t alignment);
-
     void*  m_buffer;
     size_t m_capacity;
     size_t m_offset;
