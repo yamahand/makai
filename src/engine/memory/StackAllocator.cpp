@@ -56,14 +56,24 @@ void* StackAllocator::allocate(size_t size, size_t alignment) {
                                  & ~static_cast<std::uintptr_t>(alignment - 1);
     size_t padding = static_cast<size_t>(alignedAddr - baseAddr);
 
-    if (m_offset + padding + size > m_capacity) {
+    // オーバーフロー安全な容量チェック
+    if (padding > SIZE_MAX - size) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "StackAllocator: メモリ不足 (要求: %zu B, 残余: %zu B)",
-                     padding + size, m_capacity - m_offset);
+                     "StackAllocator: メモリ不足 (要求: overflow, 残余: %zu B)",
+                     m_capacity - m_offset);
         return nullptr;
     }
 
-    m_offset += padding + size;
+    size_t needed = padding + size;
+    size_t remaining = m_capacity - m_offset;
+    if (needed > remaining) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "StackAllocator: メモリ不足 (要求: %zu B, 残余: %zu B)",
+                     needed, remaining);
+        return nullptr;
+    }
+
+    m_offset += needed;
     return base + padding;
 }
 
