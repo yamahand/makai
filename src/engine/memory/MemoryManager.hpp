@@ -6,6 +6,7 @@
 #include "../core/Config.hpp"
 #include <SDL3/SDL_log.h>
 #include <memory_resource>
+#include <new>
 #include <unordered_map>
 #include <typeindex>
 #include <memory>
@@ -188,14 +189,14 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
         auto& master = m_masterResource->getAllocator();
         void* blockBuf = master.allocate(sizeof(Block) * PoolSize, alignof(Block));
         if (!blockBuf) {
-            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                        "MemoryManager::getPool: ブロック配列の確保に失敗 (型: %s, %zu 個)",
-                        typeid(T).name(), PoolSize);
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                         "MemoryManager::getPool: ブロック配列の確保に失敗 (型: %s, %zu 個)",
+                         typeid(T).name(), PoolSize);
+            // map に登録しない（次回呼び出しで再試行できるようにする）
+            assert(false && "MemoryManager::getPool: ブロック配列の確保に失敗");
+            throw std::bad_alloc{};
         }
         auto* blocks = static_cast<Block*>(blockBuf);
-
-        // PoolHolder はブロック配列への参照のみを持つ（小さいオブジェクト）
-        // blocks が nullptr でも PoolAllocator の nullptr ガードで使用不可状態になる
         auto holder = std::make_unique<PoolHolder<T, PoolSize>>(blocks, master);
         auto* poolPtr = &holder->pool;
         m_pools[typeIdx] = std::move(holder);
