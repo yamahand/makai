@@ -1,4 +1,5 @@
 #include "StackAllocator.hpp"
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <SDL3/SDL_log.h>
@@ -52,12 +53,14 @@ void* StackAllocator::allocate(size_t size, size_t alignment) {
     // レイアウト: [...パディング...][prevOffset: size_t][ペイロード]
     //                                                   ↑ここを返す
     //
-    // ペイロードアドレス = alignUp(base + sizeof(size_t), alignment)
-    // prevOffset スロット = ペイロードアドレス - sizeof(size_t)
+    // アライメント計算は uintptr_t（ポインタ→整数は定義済み）で行い、
+    // 最終ポインタは m_buffer 基点のポインタ演算で構築する（整数→ポインタ変換を避ける）
 
-    size_t base       = reinterpret_cast<size_t>(m_buffer) + m_offset;
-    size_t payloadAddr = (base + sizeof(size_t) + alignment - 1) & ~(alignment - 1);
-    size_t overhead    = payloadAddr - base; // パディング + prevOffset スロット分
+    auto* base = static_cast<std::byte*>(m_buffer) + m_offset;
+    std::uintptr_t baseAddr    = reinterpret_cast<std::uintptr_t>(base);
+    std::uintptr_t payloadAddr = (baseAddr + sizeof(size_t) + alignment - 1)
+                                 & ~static_cast<std::uintptr_t>(alignment - 1);
+    size_t overhead = static_cast<size_t>(payloadAddr - baseAddr); // パディング + prevOffset スロット分
 
     if (m_offset + overhead + size > m_capacity) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
@@ -66,11 +69,14 @@ void* StackAllocator::allocate(size_t size, size_t alignment) {
         return nullptr;
     }
 
-    // ペイロード直前に prevOffset を書き込む（memcpy でアライメント非依存に）
-    std::memcpy(reinterpret_cast<std::byte*>(payloadAddr) - sizeof(size_t), &m_offset, sizeof(size_t));
+    // ペイロードポインタを元ポインタ + オフセットで構築（整数→ポインタ変換なし）
+    std::byte* payloadPtr = base + overhead;
+
+    // prevOffset をペイロード直前に書き込む（memcpy でアライメント非依存に）
+    std::memcpy(payloadPtr - sizeof(size_t), &m_offset, sizeof(size_t));
 
     m_offset += overhead + size;
-    return reinterpret_cast<void*>(payloadAddr);
+    return payloadPtr;
 }
 
 void StackAllocator::deallocate(void* ptr) {
