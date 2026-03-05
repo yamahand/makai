@@ -48,7 +48,7 @@ public:
     /// ラップ対象が未対応の場合は 0 を返す。
     size_t getUsedBytes() const {
         std::lock_guard<std::mutex> lock(m_mutex);
-        if constexpr (requires(const Allocator& alloc) {
+        if constexpr (requires(Allocator& alloc) {
             { alloc.getUsedBytes() } -> std::convertible_to<size_t>;
         }) {
             return static_cast<size_t>(m_wrapped.getUsedBytes());
@@ -61,7 +61,7 @@ public:
     /// ラップ対象が未対応の場合は 0 を返す。
     size_t getCapacity() const {
         std::lock_guard<std::mutex> lock(m_mutex);
-        if constexpr (requires(const Allocator& alloc) {
+        if constexpr (requires(Allocator& alloc) {
             { alloc.getCapacity() } -> std::convertible_to<size_t>;
         }) {
             return static_cast<size_t>(m_wrapped.getCapacity());
