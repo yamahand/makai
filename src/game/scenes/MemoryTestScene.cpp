@@ -397,10 +397,10 @@ void MemoryTestScene::renderStatsPanel() {
             stats.buddyBytes, stats.buddyCapacity, stats.buddyUsageRatio);
     drawBar("Paged:",
             stats.pagedBytes,
-            stats.pagedTotalCapacity > 0 ? stats.pagedTotalCapacity : 1,
+            stats.pagedTotalCapacity,
             stats.pagedUsageRatio);
     drawBar("Heap(FreeList):",
-            stats.heapBytes, stats.heapCapacity > 0 ? stats.heapCapacity : 1,
+            stats.heapBytes, stats.heapCapacity,
             stats.heapUsageRatio);
 
     ImGui::Text("Heap allocs: %zu / free blocks: %zu",
