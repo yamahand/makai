@@ -32,35 +32,35 @@ set(SDL3_VERSION       "3.4.2")
 set(SDL3_ttf_VERSION   "3.2.2")
 set(SDL3_image_VERSION "3.4.0")
 
-FetchContent_Declare(SDL3
+FetchContent_Declare(sdl3
     URL      "https://github.com/libsdl-org/SDL/releases/download/release-${SDL3_VERSION}/SDL3-devel-${SDL3_VERSION}-VC.zip"
     URL_HASH SHA256=fd4c60400634df13a86b69432b22b32f23bccd6a2f4c6a34b42b471c65eb4fd2
 )
-FetchContent_GetProperties(SDL3)
+FetchContent_GetProperties(sdl3)
 if(NOT sdl3_POPULATED)
-    FetchContent_Populate(SDL3)
+    FetchContent_Populate(sdl3)
 endif()
 set(SDL3_DIR "${sdl3_SOURCE_DIR}/cmake")
 find_package(SDL3 REQUIRED CONFIG)
 
-FetchContent_Declare(SDL3_ttf
+FetchContent_Declare(sdl3_ttf
     URL      "https://github.com/libsdl-org/SDL_ttf/releases/download/release-${SDL3_ttf_VERSION}/SDL3_ttf-devel-${SDL3_ttf_VERSION}-VC.zip"
     URL_HASH SHA256=67805c5babfc49ca0c56882dc9b8cabbcdd1e6f9edde10ddac91ddb38f3afb8c
 )
-FetchContent_GetProperties(SDL3_ttf)
+FetchContent_GetProperties(sdl3_ttf)
 if(NOT sdl3_ttf_POPULATED)
-    FetchContent_Populate(SDL3_ttf)
+    FetchContent_Populate(sdl3_ttf)
 endif()
 set(SDL3_ttf_DIR "${sdl3_ttf_SOURCE_DIR}/cmake")
 find_package(SDL3_ttf REQUIRED CONFIG)
 
-FetchContent_Declare(SDL3_image
+FetchContent_Declare(sdl3_image
     URL      "https://github.com/libsdl-org/SDL_image/releases/download/release-${SDL3_image_VERSION}/SDL3_image-devel-${SDL3_image_VERSION}-VC.zip"
     URL_HASH SHA256=6448af4a2f112e6546ad3b56260750c601c02e65a1a937d8ed3e5f5cd9c1f568
 )
-FetchContent_GetProperties(SDL3_image)
+FetchContent_GetProperties(sdl3_image)
 if(NOT sdl3_image_POPULATED)
-    FetchContent_Populate(SDL3_image)
+    FetchContent_Populate(sdl3_image)
 endif()
 set(SDL3_image_DIR "${sdl3_image_SOURCE_DIR}/cmake")
 find_package(SDL3_image REQUIRED CONFIG)
