@@ -1,4 +1,5 @@
 #include "MemoryManager.hpp"
+#include <bit>
 #include <cstdlib>
 #include <new>
 #include <SDL3/SDL_log.h>
@@ -74,20 +75,11 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
     const size_t sceneSize       = static_cast<size_t>(config.sceneAllocatorMB)       * 1024 * 1024;
     const size_t heapSize        = static_cast<size_t>(config.heapAllocatorMB)        * 1024 * 1024;
     const size_t stackSize       = static_cast<size_t>(config.stackAllocatorMB)       * 1024 * 1024;
-
-    // BuddyAllocator はバッファサイズを 2 の累乗に切り捨てる仕様のため、
-    // MemoryManager 側でも 2 の累乗に丸めてからマスターへ予約する（未使用領域をなくす）
-    const size_t buddySize = [](int mb) -> size_t {
-        size_t raw = static_cast<size_t>(mb) * 1024 * 1024;
-        size_t p = 1;
-        while (p * 2 <= raw) p *= 2;
-        return p;
-    }(config.buddyAllocatorMB);
-    if (buddySize != static_cast<size_t>(config.buddyAllocatorMB) * 1024 * 1024) {
-        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
-                    "MemoryManager: buddyAllocatorMB=%d MB を 2 の累乗 %zu MB に切り捨てます",
-                    config.buddyAllocatorMB, buddySize / (1024 * 1024));
-    }
+    // バディアロケーターのバッファサイズを 2 の累乗に切り捨てる
+    // （BuddyAllocator 内でも切り捨てが行われるが、マスターバッファからの
+    //   確保量を BuddyAllocator が実際に使うサイズに揃えて無駄な予約を防ぐ）
+    const size_t buddySizeRaw    = static_cast<size_t>(config.buddyAllocatorMB)       * 1024 * 1024;
+    const size_t buddySize       = std::bit_floor(buddySizeRaw);
 
     // doubleFrameSize*2 の乗算オーバーフロー検出
     if (doubleFrameSize > (SIZE_MAX / 2)) {
@@ -120,12 +112,16 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
                 "MemoryManager: マスターバッファ %zu MB を %p に確保",
                 totalSize / (1024 * 1024), mgr.m_masterBuffer);
 
-    // make_unique は bad_alloc を投げ得る。
+    // make_unique / emplace は bad_alloc を投げ得る。
     // 例外発生時に masterBuffer リーク＋次回 init 不可を防ぐため try/catch で包む。
     auto rollback = [&]() {
         mgr.m_pagedAllocator.reset();
         mgr.m_buddyAllocator.reset();
         mgr.m_stackAllocator.reset();
+        if (mgr.m_pools.has_value()) {
+            mgr.m_pools->clear();  // PoolHolderDeleter を起動（まだ空なので no-op）
+            mgr.m_pools.reset();   // optional 自体を破棄
+        }
         mgr.m_frameAllocator.reset();
         mgr.m_doubleFrameAllocator.reset();
         mgr.m_sceneAllocator.reset();
@@ -140,6 +136,9 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
         // マスター FreeList がバッファ全体を管理する
         mgr.m_masterResource = std::make_unique<FirstFitMemoryResource>(mgr.m_masterBuffer, totalSize);
         auto& master = mgr.m_masterResource->getAllocator();
+
+        // m_pools をマスター FreeList の pmr リソースで初期化する（OS ヒープを使わない）
+        mgr.m_pools.emplace(mgr.m_masterResource.get());
 
         // 各サブアロケーターはマスター FreeList からバッファを借りる
         // （払い出したバッファは永続使用のため deallocate しない）
@@ -189,9 +188,12 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
 }
 
 MemoryManager::~MemoryManager() {
-    // PoolAllocator デストラクタがマスター FreeList に deallocate するため
+    // PoolHolderDeleter がマスター FreeList に deallocate するため
     // m_masterResource より先にプールを破棄しなければならない
-    m_pools.clear();
+    if (m_pools.has_value()) {
+        m_pools->clear();   // 各 PoolHolderDeleter を起動（PoolAllocator + ブロック配列 + PoolHolder 本体を FreeList に返却）
+        m_pools.reset();    // pmr マップのバケット配列も FreeList に返却
+    }
 
     // PagedAllocator のデストラクタがマスター FreeList に deallocate するため先に破棄する
     m_pagedAllocator.reset();
