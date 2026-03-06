@@ -163,8 +163,13 @@ void MemoryTestScene::renderDoubleFramePanel() {
         else   addLog("[DFrame] alloc current %d B → 失敗", m_doubleFrameAllocSize);
     }
     ImGui::SameLine();
-    // current() の内容をリセット（previous との swap は行わない）
-    // 注意: 実際の swap はゲームループの onFrameEnd() で毎フレーム自動的に行われる
+    // current を previous へ移し、新 current をリセットする（フレーム境界の動作を再現）
+    if (ImGui::Button("Swap##dframe")) {
+        mem.swapDoubleFrameAllocator();
+        addLog("[DFrame] swap: cur→prev, new cur reset");
+    }
+    ImGui::SameLine();
+    // current() だけをリセット（swap はしない）
     if (ImGui::Button("Reset current##dframe")) {
         mem.doubleFrameAllocator().reset();
         addLog("[DFrame] current reset");

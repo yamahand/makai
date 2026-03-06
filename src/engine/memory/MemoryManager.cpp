@@ -41,17 +41,25 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
     // 各アロケーターサイズの上限チェック（乗算オーバーフロー防止）
     // 1 アロケーターあたり 4096 MB を上限とする（ゲームエンジンの実用範囲）
     static constexpr int MAX_ALLOCATOR_MB  = 4096;
+    // BuddyAllocator は MAX_ORDER=30（1GB）までしか管理できないため 1024MB を上限とする
+    static constexpr int MAX_BUDDY_MB      = 1024;
     // pagedAllocatorPageKB は 1 KB〜1 GB（= 1024*1024 KB）を上限とする
     static constexpr int MAX_PAGE_KB       = 1024 * 1024;
     if (config.frameAllocatorMB       > MAX_ALLOCATOR_MB ||
         config.doubleFrameAllocatorMB > MAX_ALLOCATOR_MB ||
         config.sceneAllocatorMB       > MAX_ALLOCATOR_MB ||
         config.heapAllocatorMB        > MAX_ALLOCATOR_MB ||
-        config.stackAllocatorMB       > MAX_ALLOCATOR_MB ||
-        config.buddyAllocatorMB       > MAX_ALLOCATOR_MB) {
+        config.stackAllocatorMB       > MAX_ALLOCATOR_MB) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "MemoryManager: MemoryConfig の値が上限(%d MB)を超えています",
                      MAX_ALLOCATOR_MB);
+        return false;
+    }
+    if (config.buddyAllocatorMB > MAX_BUDDY_MB) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "MemoryManager: buddyAllocatorMB の値が上限(%d MB)を超えています "
+                     "(BuddyAllocator の最大管理サイズ = 2^MAX_ORDER = 1GB)",
+                     MAX_BUDDY_MB);
         return false;
     }
     if (config.pagedAllocatorPageKB > MAX_PAGE_KB) {
@@ -66,7 +74,20 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
     const size_t sceneSize       = static_cast<size_t>(config.sceneAllocatorMB)       * 1024 * 1024;
     const size_t heapSize        = static_cast<size_t>(config.heapAllocatorMB)        * 1024 * 1024;
     const size_t stackSize       = static_cast<size_t>(config.stackAllocatorMB)       * 1024 * 1024;
-    const size_t buddySize       = static_cast<size_t>(config.buddyAllocatorMB)       * 1024 * 1024;
+
+    // BuddyAllocator はバッファサイズを 2 の累乗に切り捨てる仕様のため、
+    // MemoryManager 側でも 2 の累乗に丸めてからマスターへ予約する（未使用領域をなくす）
+    const size_t buddySize = [](int mb) -> size_t {
+        size_t raw = static_cast<size_t>(mb) * 1024 * 1024;
+        size_t p = 1;
+        while (p * 2 <= raw) p *= 2;
+        return p;
+    }(config.buddyAllocatorMB);
+    if (buddySize != static_cast<size_t>(config.buddyAllocatorMB) * 1024 * 1024) {
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "MemoryManager: buddyAllocatorMB=%d MB を 2 の累乗 %zu MB に切り捨てます",
+                    config.buddyAllocatorMB, buddySize / (1024 * 1024));
+    }
 
     // doubleFrameSize*2 の乗算オーバーフロー検出
     if (doubleFrameSize > (SIZE_MAX / 2)) {
@@ -110,8 +131,9 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
         mgr.m_sceneAllocator.reset();
         mgr.m_masterResource.reset();
         std::free(mgr.m_masterBuffer);
-        mgr.m_masterBuffer = nullptr;
-        mgr.m_masterSize   = 0;
+        mgr.m_masterBuffer              = nullptr;
+        mgr.m_masterSize                = 0;
+        mgr.m_subAllocatorReservedBytes = 0;
     };
 
     try {
