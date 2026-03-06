@@ -22,7 +22,8 @@ namespace mk::memory {
 /// Game::Game() の先頭で init(config.memory) を呼ぶ必要がある。
 ///
 /// 起動時に単一のマスターバッファを確保し、各アロケーターに分配する。
-/// （マスターバッファの OS への malloc 呼び出しはこの 1 回のみ。getPool<T>() の PoolHolder も含め、ランタイム中の OS ヒープアクセスはない）
+/// （マスターバッファの OS への malloc 呼び出しと、init() 内部の std::make_unique 等による初期化時の一時的な確保を除き、
+///  ///  初期化完了後のランタイム中は、getPool<T>() の PoolHolder も含めて OS ヒープへのアクセスは発生しないことを意図している）
 ///
 /// 使い方:
 ///   if (!MemoryManager::init(config.memory)) {
