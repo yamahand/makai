@@ -23,8 +23,9 @@ endif()
 # SDL3・SDL3_ttf・SDL3_image プレビルドバイナリ（VC版）を自動ダウンロード
 include(FetchContent)
 
-# CMake 3.30+ で FetchContent_Populate が非推奨になった警告を抑制
+# CMake 3.30+ の FetchContent_Populate 非推奨警告をスコープ限定で抑制
 if(POLICY CMP0169)
+    cmake_policy(PUSH)
     cmake_policy(SET CMP0169 OLD)
 endif()
 
@@ -64,6 +65,10 @@ if(NOT sdl3_image_POPULATED)
 endif()
 set(SDL3_image_DIR "${sdl3_image_SOURCE_DIR}/cmake")
 find_package(SDL3_image REQUIRED CONFIG)
+
+if(POLICY CMP0169)
+    cmake_policy(POP)
+endif()
 
 # Dear ImGui
 FetchContent_Declare(
