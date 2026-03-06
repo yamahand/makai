@@ -241,10 +241,11 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
         PoolHolderPtr ptr(static_cast<IPoolBase*>(holder), PoolHolderDeleter{&master});
 
         // (5) emplace で挿入する
-        //     operator[] を使うと「ノード確保 → デフォルト構築 → 代入」の順に動くため
-        //     ノード確保で bad_alloc が発生した時点では PoolHolderPtr がまだ未構築でリークする。
-        //     emplace はノード確保と値構築を一度に行い、失敗時は ptr がムーブされていないので
-        //     ptr のデストラクタが holder + blockBuf を正しく解放できる。
+        //     operator[] を使うと「ノード確保 → デフォルト構築 → 代入」の順に動くため、
+        //     中間のデフォルト構築された PoolHolderPtr が発生して余分なムーブ代入が行われる。
+        //     ここでは emplace を使うことで、マップ内の要素を一度の構築で済ませて効率化している。
+        //     なお、この時点で ptr は既に holder + blockBuf の所有権を持っているため、
+        //     ノード確保中に bad_alloc が投げられてもスタックアンワインド時に ptr のデストラクタで正しく解放され、リークは発生しない。
         auto* poolPtr = &holder->pool;
         m_pools->emplace(typeIdx, std::move(ptr));
         return *poolPtr;
