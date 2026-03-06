@@ -23,7 +23,7 @@ namespace mk::memory {
 ///
 /// 起動時に単一のマスターバッファを確保し、各アロケーターに分配する。
 /// （マスターバッファの OS への malloc 呼び出しと、init() 内部の std::make_unique 等による初期化時の一時的な確保を除き、
-///  ///  初期化完了後のランタイム中は、getPool<T>() の PoolHolder も含めて OS ヒープへのアクセスは発生しないことを意図している）
+///  初期化完了後のランタイム中は、getPool<T>() の PoolHolder も含めて OS ヒープへのアクセスは発生しないことを意図している）
 ///
 /// 使い方:
 ///   if (!MemoryManager::init(config.memory)) {
