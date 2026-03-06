@@ -24,6 +24,9 @@ struct MemoryConfig {
     int sceneAllocatorMB       = 16;  // シーンアロケーターのサイズ（MB）
     int heapAllocatorMB        = 32;  // ヒープアロケーターのサイズ（MB）
     int doubleFrameAllocatorMB = 4;   // ダブルフレームアロケーター 1 バッファ分のサイズ（MB）
+    int stackAllocatorMB       = 4;   // スタックアロケーターのサイズ（MB）
+    int buddyAllocatorMB       = 8;   // バディアロケーターのサイズ（MB、2の累乗に切り捨て）
+    int pagedAllocatorPageKB   = 256; // ページドアロケーターの 1 ページサイズ（KB）
 };
 
 // ゲーム設定

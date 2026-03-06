@@ -25,12 +25,16 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
 
     // MemoryConfig の値が負または 0 でないことを検証する
     if (config.frameAllocatorMB <= 0 || config.sceneAllocatorMB <= 0 ||
-        config.heapAllocatorMB  <= 0 || config.doubleFrameAllocatorMB <= 0) {
+        config.heapAllocatorMB  <= 0 || config.doubleFrameAllocatorMB <= 0 ||
+        config.stackAllocatorMB <= 0 || config.buddyAllocatorMB <= 0 ||
+        config.pagedAllocatorPageKB <= 0) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "MemoryManager: MemoryConfig に無効な値が含まれています "
-                     "(frame=%d, doubleFrame=%d, scene=%d, heap=%d)",
+                     "(frame=%d, doubleFrame=%d, scene=%d, heap=%d, stack=%d, buddy=%d, pagedPageKB=%d)",
                      config.frameAllocatorMB, config.doubleFrameAllocatorMB,
-                     config.sceneAllocatorMB, config.heapAllocatorMB);
+                     config.sceneAllocatorMB, config.heapAllocatorMB,
+                     config.stackAllocatorMB, config.buddyAllocatorMB,
+                     config.pagedAllocatorPageKB);
         return false;
     }
 
@@ -40,7 +44,9 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
     if (config.frameAllocatorMB       > MAX_ALLOCATOR_MB ||
         config.doubleFrameAllocatorMB > MAX_ALLOCATOR_MB ||
         config.sceneAllocatorMB       > MAX_ALLOCATOR_MB ||
-        config.heapAllocatorMB        > MAX_ALLOCATOR_MB) {
+        config.heapAllocatorMB        > MAX_ALLOCATOR_MB ||
+        config.stackAllocatorMB       > MAX_ALLOCATOR_MB ||
+        config.buddyAllocatorMB       > MAX_ALLOCATOR_MB) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "MemoryManager: MemoryConfig の値が上限(%d MB)を超えています",
                      MAX_ALLOCATOR_MB);
@@ -51,6 +57,8 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
     const size_t doubleFrameSize = static_cast<size_t>(config.doubleFrameAllocatorMB) * 1024 * 1024;
     const size_t sceneSize       = static_cast<size_t>(config.sceneAllocatorMB)       * 1024 * 1024;
     const size_t heapSize        = static_cast<size_t>(config.heapAllocatorMB)        * 1024 * 1024;
+    const size_t stackSize       = static_cast<size_t>(config.stackAllocatorMB)       * 1024 * 1024;
+    const size_t buddySize       = static_cast<size_t>(config.buddyAllocatorMB)       * 1024 * 1024;
 
     // doubleFrameSize*2 の乗算オーバーフロー検出
     if (doubleFrameSize > (SIZE_MAX / 2)) {
@@ -59,7 +67,8 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
         return false;
     }
     const size_t doubleFrameTotal = doubleFrameSize * 2;
-    const size_t totalSize        = frameSize + doubleFrameTotal + sceneSize + heapSize;
+    const size_t totalSize        = frameSize + doubleFrameTotal + sceneSize + heapSize
+                                    + stackSize + buddySize;
 
     // 加算オーバーフロー検出（各項より合計が小さくなった場合に折り返しを検知）
     if (totalSize < frameSize || totalSize < heapSize) {
@@ -85,6 +94,9 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
     // make_unique は bad_alloc を投げ得る。
     // 例外発生時に masterBuffer リーク＋次回 init 不可を防ぐため try/catch で包む。
     auto rollback = [&]() {
+        mgr.m_pagedAllocator.reset();
+        mgr.m_buddyAllocator.reset();
+        mgr.m_stackAllocator.reset();
         mgr.m_frameAllocator.reset();
         mgr.m_doubleFrameAllocator.reset();
         mgr.m_sceneAllocator.reset();
@@ -105,9 +117,11 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
         void* dframe0  = master.allocate(doubleFrameSize,  alignof(std::max_align_t));
         void* dframe1  = master.allocate(doubleFrameSize,  alignof(std::max_align_t));
         void* sceneBuf = master.allocate(sceneSize,        alignof(std::max_align_t));
+        void* stackBuf = master.allocate(stackSize,        alignof(std::max_align_t));
+        void* buddyBuf = master.allocate(buddySize,        alignof(std::max_align_t));
 
         // いずれかのサブアロケーター用バッファ確保に失敗した場合は即座に失敗として処理する
-        if (!frameBuf || !dframe0 || !dframe1 || !sceneBuf) {
+        if (!frameBuf || !dframe0 || !dframe1 || !sceneBuf || !stackBuf || !buddyBuf) {
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                          "MemoryManager: サブアロケーター用バッファの確保に失敗");
             rollback();
@@ -118,6 +132,12 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
         mgr.m_doubleFrameAllocator = std::make_unique<DoubleFrameAllocator>(
             dframe0, doubleFrameSize, dframe1, doubleFrameSize);
         mgr.m_sceneAllocator = std::make_unique<LinearAllocator>(sceneBuf, sceneSize);
+        mgr.m_stackAllocator = std::make_unique<StackAllocator>(stackBuf, stackSize);
+        mgr.m_buddyAllocator = std::make_unique<BuddyAllocator>(buddyBuf, buddySize);
+
+        // ページドアロケーターはバッキングとしてヒープ（マスター FreeList の残余）を使う
+        const size_t pageSize = static_cast<size_t>(config.pagedAllocatorPageKB) * 1024;
+        mgr.m_pagedAllocator = std::make_unique<PagedAllocator>(pageSize, master);
 
         // サブアロケーター予約分を記録（ヒープ統計の補正に使う）
         mgr.m_subAllocatorReservedBytes = master.getUsedBytes();
@@ -141,10 +161,15 @@ MemoryManager::~MemoryManager() {
     // m_masterResource より先にプールを破棄しなければならない
     m_pools.clear();
 
+    // PagedAllocator のデストラクタがマスター FreeList に deallocate するため先に破棄する
+    m_pagedAllocator.reset();
+
     // サブアロケーターを破棄する（外部バッファなので free は呼ばない）
     m_frameAllocator.reset();
     m_doubleFrameAllocator.reset();
     m_sceneAllocator.reset();
+    m_stackAllocator.reset();
+    m_buddyAllocator.reset();
 
     // マスターリソース自体を破棄する（FreeListMemoryResource は reset 不要、直後に破棄される）
     // マスター FreeListAllocator のカウンタをクリアしてからリソース自体を破棄する
@@ -240,6 +265,28 @@ MemoryManager::Stats MemoryManager::getStats() const {
     stats.heapFreeBlockCount       = master.getFreeBlockCount();
     stats.masterTotalBytes         = masterUsed;
     stats.masterTotalCapacity      = master.getCapacity();
+
+    // スタックアロケーター
+    if (m_stackAllocator) {
+        stats.stackBytes      = m_stackAllocator->getUsedBytes();
+        stats.stackCapacity   = m_stackAllocator->getCapacity();
+        stats.stackUsageRatio = m_stackAllocator->getUsageRatio();
+    }
+
+    // バディアロケーター
+    if (m_buddyAllocator) {
+        stats.buddyBytes      = m_buddyAllocator->getUsedBytes();
+        stats.buddyCapacity   = m_buddyAllocator->getCapacity();
+        stats.buddyUsageRatio = m_buddyAllocator->getUsageRatio();
+    }
+
+    // ページドアロケーター
+    if (m_pagedAllocator) {
+        stats.pagedBytes         = m_pagedAllocator->getUsedBytes();
+        stats.pagedTotalCapacity = m_pagedAllocator->getTotalCapacity();
+        stats.pagedPageCount     = m_pagedAllocator->getPageCount();
+        stats.pagedUsageRatio    = m_pagedAllocator->getUsageRatio();
+    }
 
     // 総割り当て回数
     stats.totalFrameAllocations = m_totalFrameAllocations;

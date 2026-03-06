@@ -1,5 +1,8 @@
 #pragma once
 #include "LinearAllocator.hpp"
+#include "StackAllocator.hpp"
+#include "BuddyAllocator.hpp"
+#include "PagedAllocator.hpp"
 #include "DoubleFrameAllocator.hpp"
 #include "FreeListMemoryResource.hpp"
 #include "PoolAllocator.hpp"
@@ -80,6 +83,27 @@ public:
         return m_masterResource.get();
     }
 
+    /// スタックアロケーターを取得
+    /// マーカーによる LIFO 一括解放をサポートする一時バッファ
+    StackAllocator& stackAllocator() {
+        assert(m_stackAllocator && "MemoryManager::init() が呼ばれていません");
+        return *m_stackAllocator;
+    }
+
+    /// バディアロケーターを取得
+    /// 2の累乗サイズのブロックを O(log N) で割り当て・解放する
+    BuddyAllocator& buddyAllocator() {
+        assert(m_buddyAllocator && "MemoryManager::init() が呼ばれていません");
+        return *m_buddyAllocator;
+    }
+
+    /// ページドアロケーターを取得
+    /// バッキングアロケーターからページを動的に追加する線形アロケーター
+    PagedAllocator& pagedAllocator() {
+        assert(m_pagedAllocator && "MemoryManager::init() が呼ばれていません");
+        return *m_pagedAllocator;
+    }
+
     /// 型Tのプールアロケーターを取得
     /// 初回アクセス時に自動的に生成される
     template<typename T, size_t PoolSize = 256>
@@ -116,6 +140,22 @@ public:
         size_t heapFreeBlockCount;
         size_t masterTotalBytes;   ///< マスターバッファ全体の使用量（デバッグ用）
         size_t masterTotalCapacity;
+
+        // スタックアロケーター
+        size_t stackBytes;
+        size_t stackCapacity;
+        float  stackUsageRatio;
+
+        // バディアロケーター
+        size_t buddyBytes;
+        size_t buddyCapacity;
+        float  buddyUsageRatio;
+
+        // ページドアロケーター
+        size_t pagedBytes;
+        size_t pagedTotalCapacity;
+        size_t pagedPageCount;
+        float  pagedUsageRatio;
 
         // 総割り当て回数（デバッグ用）
         size_t totalFrameAllocations;
@@ -159,6 +199,9 @@ private:
     std::unique_ptr<LinearAllocator>      m_frameAllocator;
     std::unique_ptr<DoubleFrameAllocator> m_doubleFrameAllocator;
     std::unique_ptr<LinearAllocator>      m_sceneAllocator;
+    std::unique_ptr<StackAllocator>       m_stackAllocator;
+    std::unique_ptr<BuddyAllocator>       m_buddyAllocator;
+    std::unique_ptr<PagedAllocator>       m_pagedAllocator;
 
     // プールアロケーターマップ（型IDで管理）
     std::unordered_map<std::type_index, std::unique_ptr<IPoolBase>> m_pools;
