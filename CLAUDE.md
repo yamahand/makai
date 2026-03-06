@@ -22,7 +22,7 @@ cmake --build build
 ./build/makai
 ```
 
-SDL3・SDL3_ttf・SDL3_image はすべて FetchContent でプレビルドバイナリ（VC版）を自動ダウンロード。手動セットアップは不要。
+SDL3・SDL3_ttf・SDL3_image はすべて FetchContent でプレビルドバイナリ（VC 版）を自動ダウンロードします（**現在の正式な手順**）。`external/SDL3_image-3.4.0/` への手動配置や「CMake 3.20+」といった古いドキュメント上の記述が残っている場合は、それらは**廃止済みの情報**なので無視し、この節の内容を真としてください。
 
 ## 設計上の注意点
 
