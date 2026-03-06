@@ -22,16 +22,7 @@ cmake --build build
 ./build/makai
 ```
 
-SDL3 は FetchContent で自動ダウンロード。
-
-## 外部ライブラリのセットアップ
-
-### SDL3_image（手動配置が必要）
-
-FetchContent でのビルドが通らないためプリビルド版を使用。`external/` は .gitignore 対象なので各自でダウンロードして配置すること。
-
-1. https://github.com/libsdl-org/SDL_image/releases から `SDL3_image-devel-3.4.0-VC.zip` をダウンロード
-2. 解凍して `external/SDL3_image-3.4.0/` に配置
+SDL3・SDL3_ttf・SDL3_image はすべて FetchContent でプレビルドバイナリ（VC版）を自動ダウンロード。手動セットアップは不要。
 
 ## 設計上の注意点
 

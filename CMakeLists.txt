@@ -12,18 +12,42 @@ if(MSVC)
     add_compile_options(/utf-8)
 endif()
 
-# SDL3 と SDL3_ttf を自動取得
+# SDL3・SDL3_ttf・SDL3_image プレビルドバイナリ（VC版）を自動ダウンロード
 include(FetchContent)
-FetchContent_Declare(
-    SDL3
-    GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-    GIT_TAG        main
+
+set(SDL3_VERSION       "3.4.2")
+set(SDL3_ttf_VERSION   "3.2.2")
+set(SDL3_image_VERSION "3.4.0")
+
+FetchContent_Declare(SDL3
+    URL "https://github.com/libsdl-org/SDL/releases/download/release-${SDL3_VERSION}/SDL3-devel-${SDL3_VERSION}-VC.zip"
 )
-FetchContent_Declare(
-    SDL3_ttf
-    GIT_REPOSITORY https://github.com/libsdl-org/SDL_ttf.git
-    GIT_TAG        main
+FetchContent_GetProperties(SDL3)
+if(NOT sdl3_POPULATED)
+    FetchContent_Populate(SDL3)
+endif()
+set(SDL3_DIR "${sdl3_SOURCE_DIR}/SDL3-${SDL3_VERSION}/cmake")
+find_package(SDL3 REQUIRED CONFIG)
+
+FetchContent_Declare(SDL3_ttf
+    URL "https://github.com/libsdl-org/SDL_ttf/releases/download/release-${SDL3_ttf_VERSION}/SDL3_ttf-devel-${SDL3_ttf_VERSION}-VC.zip"
 )
+FetchContent_GetProperties(SDL3_ttf)
+if(NOT sdl3_ttf_POPULATED)
+    FetchContent_Populate(SDL3_ttf)
+endif()
+set(SDL3_ttf_DIR "${sdl3_ttf_SOURCE_DIR}/SDL3_ttf-${SDL3_ttf_VERSION}/cmake")
+find_package(SDL3_ttf REQUIRED CONFIG)
+
+FetchContent_Declare(SDL3_image
+    URL "https://github.com/libsdl-org/SDL_image/releases/download/release-${SDL3_image_VERSION}/SDL3_image-devel-${SDL3_image_VERSION}-VC.zip"
+)
+FetchContent_GetProperties(SDL3_image)
+if(NOT sdl3_image_POPULATED)
+    FetchContent_Populate(SDL3_image)
+endif()
+set(SDL3_image_DIR "${sdl3_image_SOURCE_DIR}/SDL3_image-${SDL3_image_VERSION}/cmake")
+find_package(SDL3_image REQUIRED CONFIG)
 
 # Dear ImGui
 FetchContent_Declare(
@@ -49,11 +73,7 @@ FetchContent_Declare(
 # GLM options: disable library build (header-only mode)
 set(GLM_BUILD_LIBRARY OFF CACHE BOOL "" FORCE)
 set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-# SDL3_image: Use prebuilt binary (FetchContent had git submodule issues)
-set(SDL3_image_DIR "${CMAKE_SOURCE_DIR}/external/SDL3_image-3.4.0/cmake")
-find_package(SDL3_image REQUIRED CONFIG)
-
-FetchContent_MakeAvailable(SDL3 SDL3_ttf imgui json glm)
+FetchContent_MakeAvailable(imgui json glm)
 
 # Create ImGui library with SDL3 backend
 add_library(imgui_sdl3 STATIC
@@ -73,17 +93,8 @@ target_include_directories(imgui_sdl3 PUBLIC
 
 target_link_libraries(imgui_sdl3 PUBLIC SDL3::SDL3)
 
-# SDL 関連ターゲットを Visual Studio の "External" フォルダーにまとめる
-foreach(_target IN ITEMS
-    # SDL3
-    SDL3 SDL3-shared SDL3-static SDL3_test SDL3_Headers
-    # SDL3_ttf
-    SDL3_ttf SDL3_ttf-shared SDL3_ttf-static
-    # SDL3_ttf の依存ライブラリ
-    freetype harfbuzz plutosvg plutovg SDL_uclibc
-    # ImGui
-    imgui_sdl3
-)
+# ImGui ターゲットを Visual Studio の "External" フォルダーにまとめる
+foreach(_target IN ITEMS imgui_sdl3)
     if(TARGET ${_target})
         set_target_properties(${_target} PROPERTIES FOLDER "External")
     endif()
@@ -122,7 +133,7 @@ if(WIN32)
             $<TARGET_FILE:SDL3_ttf::SDL3_ttf>
             $<TARGET_FILE_DIR:${PROJECT_NAME}>
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${CMAKE_SOURCE_DIR}/external/SDL3_image-3.4.0/lib/x64/SDL3_image.dll"
+            $<TARGET_FILE:SDL3_image::SDL3_image>
             $<TARGET_FILE_DIR:${PROJECT_NAME}>
     )
 endif()
