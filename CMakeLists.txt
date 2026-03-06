@@ -144,7 +144,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     makai_engine
 )
 
-# Copy SDL3 and SDL3_ttf DLLs to executable directory (Windows only)
+# Copy SDL3 and SDL3_ttf, SDL3_image DLLs to executable directory (Windows only)
 if(WIN32)
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
