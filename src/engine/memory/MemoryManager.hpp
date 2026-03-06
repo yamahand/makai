@@ -64,12 +64,14 @@ public:
         return m_doubleFrameAllocator->previous();
     }
 
+#ifndef NDEBUG
     /// ダブルフレームアロケーターを手動で swap する（テスト・デバッグ用）
     /// 通常は onFrameEnd() が毎フレーム自動的に呼ぶため、ゲームコードから直接呼ぶ必要はない
     void swapDoubleFrameAllocator() {
         assert(m_doubleFrameAllocator && "MemoryManager::init() が呼ばれていません");
         m_doubleFrameAllocator->swap();
     }
+#endif // !NDEBUG
 
     /// シーンアロケーターを取得
     /// シーン変更時にリセットされる

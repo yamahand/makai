@@ -171,6 +171,15 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
 
         // ページドアロケーターはバッキングとしてヒープ（マスター FreeList の残余）を使う
         const size_t pageSize = static_cast<size_t>(config.pagedAllocatorPageKB) * 1024;
+        const size_t remainingBytes = totalSize - mgr.m_subAllocatorReservedBytes;
+        if (pageSize > remainingBytes) {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                         "MemoryManager: PagedAllocator のページサイズ %zu bytes が"
+                         "残余ヒープ %zu bytes を超えています",
+                         pageSize, remainingBytes);
+            rollback();
+            return false;
+        }
         mgr.m_pagedAllocator = std::make_unique<PagedAllocator>(pageSize, master);
     } catch (const std::bad_alloc& e) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
