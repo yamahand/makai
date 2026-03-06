@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <typeindex>
 #include <memory>
+#include <optional>
 #include <cstdlib>
 #include <cassert>
 
@@ -21,7 +22,8 @@ namespace mk::memory {
 /// Game::Game() の先頭で init(config.memory) を呼ぶ必要がある。
 ///
 /// 起動時に単一のマスターバッファを確保し、各アロケーターに分配する。
-/// （マスターバッファの OS への malloc 呼び出しはこの 1 回のみであり、他に new や標準コンテナ等による動的確保が発生する可能性はある）
+/// （マスターバッファの OS への malloc 呼び出しと、init() 内部の std::make_unique 等による初期化時の一時的な確保を除き、
+///  初期化完了後のランタイム中は、getPool<T>() の PoolHolder も含めて OS ヒープへのアクセスは発生しないことを意図している）
 ///
 /// 使い方:
 ///   if (!MemoryManager::init(config.memory)) {
@@ -148,6 +150,19 @@ private:
             : pool(blocks, backing) {}
     };
 
+    /// PoolHolder 本体をマスター FreeList へ返却するカスタムデリーター
+    struct PoolHolderDeleter {
+        FirstFitAllocator* allocator = nullptr;  ///< 返却先アロケーター
+        void operator()(IPoolBase* ptr) const {
+            if (!ptr || !allocator) return;
+            ptr->~IPoolBase();           // 仮想デストラクタ経由で PoolAllocator も破棄（ブロック配列も返却される）
+            allocator->deallocate(ptr);  // PoolHolder 本体をマスター FreeList に返却
+        }
+    };
+
+    /// OS ヒープを使わない PoolHolder スマートポインタ型
+    using PoolHolderPtr = std::unique_ptr<IPoolBase, PoolHolderDeleter>;
+
     // マスターバッファ（起動時に 1 度だけ malloc する）
     void*  m_masterBuffer = nullptr;
     size_t m_masterSize   = 0;
@@ -160,8 +175,10 @@ private:
     std::unique_ptr<DoubleFrameAllocator> m_doubleFrameAllocator;
     std::unique_ptr<LinearAllocator>      m_sceneAllocator;
 
-    // プールアロケーターマップ（型IDで管理）
-    std::unordered_map<std::type_index, std::unique_ptr<IPoolBase>> m_pools;
+    /// プールアロケーターマップ（型IDで管理）
+    /// std::pmr::unordered_map はマスター FreeList からノード・バケットを確保するため OS ヒープを使わない
+    /// m_masterResource より後に初期化する必要があるため std::optional で遅延初期化する
+    std::optional<std::pmr::unordered_map<std::type_index, PoolHolderPtr>> m_pools;
 
     // 統計情報
     size_t m_totalFrameAllocations    = 0;
@@ -176,30 +193,61 @@ private:
 template<typename T, size_t PoolSize>
 PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
     assert(m_masterResource && "MemoryManager::init() が呼ばれていません");
+    assert(m_pools.has_value() && "MemoryManager::init() が呼ばれていません");
 
     std::type_index typeIdx = typeid(T);
 
-    auto it = m_pools.find(typeIdx);
-    if (it == m_pools.end()) {
-        // マスター FreeList からブロック配列を確保する
+    auto it = m_pools->find(typeIdx);
+    if (it == m_pools->end()) {
         using Block = typename PoolAllocator<T, PoolSize>::Block;
         static_assert(alignof(Block) <= 255,
                       "PoolAllocator のブロックアライメントは 255 以下でなければなりません "
                       "(FreeListAllocator は alignment <= 255 のみサポートします)");
+        static_assert(alignof(PoolHolder<T, PoolSize>) <= 255,
+                      "PoolHolder のアライメントが FreeListAllocator の上限 (255) を超えています");
+
         auto& master = m_masterResource->getAllocator();
+
+        // (1) ブロック配列をマスター FreeList から確保する
         void* blockBuf = master.allocate(sizeof(Block) * PoolSize, alignof(Block));
         if (!blockBuf) {
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                          "MemoryManager::getPool: ブロック配列の確保に失敗 (型: %s, %zu 個)",
                          typeid(T).name(), PoolSize);
-            // map に登録しない（次回呼び出しで再試行できるようにする）
             assert(false && "MemoryManager::getPool: ブロック配列の確保に失敗");
             throw std::bad_alloc{};
         }
-        auto* blocks = static_cast<Block*>(blockBuf);
-        auto holder = std::make_unique<PoolHolder<T, PoolSize>>(blocks, master);
+
+        // (2) PoolHolder 本体をマスター FreeList から確保する
+        void* holderBuf = master.allocate(
+            sizeof(PoolHolder<T, PoolSize>),
+            alignof(PoolHolder<T, PoolSize>));
+        if (!holderBuf) {
+            master.deallocate(blockBuf);  // ブロック配列のリーク防止
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                         "MemoryManager::getPool: PoolHolder の確保に失敗 (型: %s)",
+                         typeid(T).name());
+            assert(false && "MemoryManager::getPool: PoolHolder の確保に失敗");
+            throw std::bad_alloc{};
+        }
+
+        // (3) placement new で PoolHolder を構築する（OS ヒープ不使用）
+        auto* holder = ::new(holderBuf)
+            PoolHolder<T, PoolSize>(static_cast<Block*>(blockBuf), master);
+
+        // (4) 即座に PoolHolderPtr に所有権を渡す
+        //     以降は ptr のデストラクタが holder + blockBuf を確実に解放するため
+        //     次の emplace が bad_alloc を投げてもリークしない
+        PoolHolderPtr ptr(static_cast<IPoolBase*>(holder), PoolHolderDeleter{&master});
+
+        // (5) emplace で挿入する
+        //     operator[] を使うと「ノード確保 → デフォルト構築 → 代入」の順に動くため、
+        //     中間のデフォルト構築された PoolHolderPtr が発生して余分なムーブ代入が行われる。
+        //     ここでは emplace を使うことで、マップ内の要素を一度の構築で済ませて効率化している。
+        //     なお、この時点で ptr は既に holder + blockBuf の所有権を持っているため、
+        //     ノード確保中に bad_alloc が投げられてもスタックアンワインド時に ptr のデストラクタで正しく解放され、リークは発生しない。
         auto* poolPtr = &holder->pool;
-        m_pools[typeIdx] = std::move(holder);
+        m_pools->emplace(typeIdx, std::move(ptr));
         return *poolPtr;
     }
 
