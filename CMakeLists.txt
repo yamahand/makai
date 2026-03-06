@@ -15,6 +15,11 @@ endif()
 # SDL3・SDL3_ttf・SDL3_image プレビルドバイナリ（VC版）を自動ダウンロード
 include(FetchContent)
 
+# CMake 3.30+ で FetchContent_Populate が非推奨になった警告を抑制
+if(POLICY CMP0169)
+    cmake_policy(SET CMP0169 OLD)
+endif()
+
 set(SDL3_VERSION       "3.4.2")
 set(SDL3_ttf_VERSION   "3.2.2")
 set(SDL3_image_VERSION "3.4.0")
@@ -26,7 +31,7 @@ FetchContent_GetProperties(SDL3)
 if(NOT sdl3_POPULATED)
     FetchContent_Populate(SDL3)
 endif()
-set(SDL3_DIR "${sdl3_SOURCE_DIR}/SDL3-${SDL3_VERSION}/cmake")
+set(SDL3_DIR "${sdl3_SOURCE_DIR}/cmake")
 find_package(SDL3 REQUIRED CONFIG)
 
 FetchContent_Declare(SDL3_ttf
@@ -36,7 +41,7 @@ FetchContent_GetProperties(SDL3_ttf)
 if(NOT sdl3_ttf_POPULATED)
     FetchContent_Populate(SDL3_ttf)
 endif()
-set(SDL3_ttf_DIR "${sdl3_ttf_SOURCE_DIR}/SDL3_ttf-${SDL3_ttf_VERSION}/cmake")
+set(SDL3_ttf_DIR "${sdl3_ttf_SOURCE_DIR}/cmake")
 find_package(SDL3_ttf REQUIRED CONFIG)
 
 FetchContent_Declare(SDL3_image
@@ -46,7 +51,7 @@ FetchContent_GetProperties(SDL3_image)
 if(NOT sdl3_image_POPULATED)
     FetchContent_Populate(SDL3_image)
 endif()
-set(SDL3_image_DIR "${sdl3_image_SOURCE_DIR}/SDL3_image-${SDL3_image_VERSION}/cmake")
+set(SDL3_image_DIR "${sdl3_image_SOURCE_DIR}/cmake")
 find_package(SDL3_image REQUIRED CONFIG)
 
 # Dear ImGui
