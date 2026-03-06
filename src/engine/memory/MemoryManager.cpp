@@ -171,6 +171,18 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
 
         // ページドアロケーターはバッキングとしてヒープ（マスター FreeList の残余）を使う
         const size_t pageSize = static_cast<size_t>(config.pagedAllocatorPageKB) * 1024;
+
+        // (1) ページサイズがヘッダサイズ以下の場合は PagedAllocator が使用不可状態になるため
+        //     コンストラクタを呼ぶ前に事前検証して失敗を明示する
+        if (pageSize <= PagedAllocator::kHeaderSize) {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                         "MemoryManager: pagedAllocatorPageKB から計算したページサイズ %zu bytes が"
+                         "ヘッダサイズ %zu bytes 以下です。PagedAllocator を生成できません。",
+                         pageSize, PagedAllocator::kHeaderSize);
+            rollback();
+            return false;
+        }
+
         const size_t remainingBytes = totalSize - mgr.m_subAllocatorReservedBytes;
         if (pageSize > remainingBytes) {
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
@@ -181,6 +193,16 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
             return false;
         }
         mgr.m_pagedAllocator = std::make_unique<PagedAllocator>(pageSize, master);
+
+        // (2) コンストラクタ内で初期ページ確保に失敗した場合は getPageCount() == 0 になる。
+        //     使用不可状態のまま init() が成功扱いにならないよう確認して失敗時は rollback する。
+        if (mgr.m_pagedAllocator->getPageCount() == 0) {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                         "MemoryManager: PagedAllocator の初期化に失敗しました "
+                         "(初期ページの確保に失敗)");
+            rollback();
+            return false;
+        }
     } catch (const std::bad_alloc& e) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "MemoryManager: bad_alloc 例外によりリソース確保に失敗: %s", e.what());

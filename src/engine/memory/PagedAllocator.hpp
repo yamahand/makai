@@ -63,7 +63,6 @@ public:
     PagedAllocator(const PagedAllocator&)            = delete;
     PagedAllocator& operator=(const PagedAllocator&) = delete;
 
-private:
     /// 各ページバッファの先頭に埋め込まれるヘッダ
     struct PageHeader {
         PageHeader* next;     ///< 次ページへのリンクリスト
@@ -71,10 +70,13 @@ private:
         size_t      offset;   ///< 現在のオフセット（バイト）
     };
 
-    /// ページヘッダのサイズ（アライメント込み）
+    /// ページヘッダのサイズ（アライメント込み）。
+    /// MemoryManager::init() でのページサイズ事前検証に使用するため public に公開する。
     static constexpr size_t kHeaderSize =
         (sizeof(PageHeader) + alignof(std::max_align_t) - 1)
         & ~(alignof(std::max_align_t) - 1);
+
+private:
 
     /// ページヘッダの直後（ペイロード先頭アドレス）を返す
     static std::byte* pagePayload(PageHeader* header) {
