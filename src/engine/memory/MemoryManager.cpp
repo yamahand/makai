@@ -1,4 +1,5 @@
 #include "MemoryManager.hpp"
+#include <bit>
 #include <cstdlib>
 #include <new>
 #include <SDL3/SDL_log.h>
@@ -66,7 +67,11 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
     const size_t sceneSize       = static_cast<size_t>(config.sceneAllocatorMB)       * 1024 * 1024;
     const size_t heapSize        = static_cast<size_t>(config.heapAllocatorMB)        * 1024 * 1024;
     const size_t stackSize       = static_cast<size_t>(config.stackAllocatorMB)       * 1024 * 1024;
-    const size_t buddySize       = static_cast<size_t>(config.buddyAllocatorMB)       * 1024 * 1024;
+    // バディアロケーターのバッファサイズを 2 の累乗に切り捨てる
+    // （BuddyAllocator 内でも切り捨てが行われるが、マスターバッファからの
+    //   確保量を BuddyAllocator が実際に使うサイズに揃えて無駄な予約を防ぐ）
+    const size_t buddySizeRaw    = static_cast<size_t>(config.buddyAllocatorMB)       * 1024 * 1024;
+    const size_t buddySize       = std::bit_floor(buddySizeRaw);
 
     // doubleFrameSize*2 の乗算オーバーフロー検出
     if (doubleFrameSize > (SIZE_MAX / 2)) {
