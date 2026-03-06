@@ -49,6 +49,9 @@ Config Config::load(const std::string& path) {
             if (mem.contains("scene_allocator_mb"))        config.memory.sceneAllocatorMB       = mem["scene_allocator_mb"];
             if (mem.contains("heap_allocator_mb"))         config.memory.heapAllocatorMB        = mem["heap_allocator_mb"];
             if (mem.contains("double_frame_allocator_mb")) config.memory.doubleFrameAllocatorMB = mem["double_frame_allocator_mb"];
+            if (mem.contains("stack_allocator_mb"))        config.memory.stackAllocatorMB       = mem["stack_allocator_mb"];
+            if (mem.contains("buddy_allocator_mb"))        config.memory.buddyAllocatorMB       = mem["buddy_allocator_mb"];
+            if (mem.contains("paged_allocator_page_kb"))   config.memory.pagedAllocatorPageKB   = mem["paged_allocator_page_kb"];
         }
 
         // ゲーム設定を別造
@@ -96,6 +99,9 @@ void Config::save(const std::string& path) const {
         j["memory"]["scene_allocator_mb"]        = memory.sceneAllocatorMB;
         j["memory"]["heap_allocator_mb"]         = memory.heapAllocatorMB;
         j["memory"]["double_frame_allocator_mb"] = memory.doubleFrameAllocatorMB;
+        j["memory"]["stack_allocator_mb"]        = memory.stackAllocatorMB;
+        j["memory"]["buddy_allocator_mb"]        = memory.buddyAllocatorMB;
+        j["memory"]["paged_allocator_page_kb"]   = memory.pagedAllocatorPageKB;
 
         j["game"]["time_scale"] = game.timeScale;
         j["game"]["starting_money"] = game.startingMoney;
