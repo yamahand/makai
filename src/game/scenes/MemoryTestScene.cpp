@@ -47,6 +47,10 @@ void MemoryTestScene::onExit() {
     }
     m_heapAllocs.clear();
     m_stackMarkers.clear();
+
+    // このシーンで使用したスタック / ページアロケーターをクリーンな状態に戻す
+    mem.stackAllocator().reset();
+    mem.pagedAllocator().reset();
 }
 
 // ────────────────────────────────────────────
@@ -159,11 +163,11 @@ void MemoryTestScene::renderDoubleFramePanel() {
         else   addLog("[DFrame] alloc current %d B → 失敗", m_doubleFrameAllocSize);
     }
     ImGui::SameLine();
-    // swap() — current と previous を入れ替え、新 current をリセット
-    // 注意: ゲームループの onFrameEnd() でも毎フレーム自動的に swap が行われる
-    if (ImGui::Button("Swap##dframe")) {
-        mem.doubleFrameAllocator().reset(); // current をリセット（swap 相当の可視化）
-        addLog("[DFrame] current reset (swap 相当)");
+    // current() の内容をリセット（previous との swap は行わない）
+    // 注意: 実際の swap はゲームループの onFrameEnd() で毎フレーム自動的に行われる
+    if (ImGui::Button("Reset current##dframe")) {
+        mem.doubleFrameAllocator().reset();
+        addLog("[DFrame] current reset");
     }
 
     const auto& cur  = mem.doubleFrameAllocator();

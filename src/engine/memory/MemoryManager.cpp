@@ -40,7 +40,9 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
 
     // 各アロケーターサイズの上限チェック（乗算オーバーフロー防止）
     // 1 アロケーターあたり 4096 MB を上限とする（ゲームエンジンの実用範囲）
-    static constexpr int MAX_ALLOCATOR_MB = 4096;
+    static constexpr int MAX_ALLOCATOR_MB  = 4096;
+    // pagedAllocatorPageKB は 1 KB〜1 GB（= 1024*1024 KB）を上限とする
+    static constexpr int MAX_PAGE_KB       = 1024 * 1024;
     if (config.frameAllocatorMB       > MAX_ALLOCATOR_MB ||
         config.doubleFrameAllocatorMB > MAX_ALLOCATOR_MB ||
         config.sceneAllocatorMB       > MAX_ALLOCATOR_MB ||
@@ -50,6 +52,12 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "MemoryManager: MemoryConfig の値が上限(%d MB)を超えています",
                      MAX_ALLOCATOR_MB);
+        return false;
+    }
+    if (config.pagedAllocatorPageKB > MAX_PAGE_KB) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "MemoryManager: pagedAllocatorPageKB の値が上限(%d KB)を超えています",
+                     MAX_PAGE_KB);
         return false;
     }
 
@@ -135,12 +143,14 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
         mgr.m_stackAllocator = std::make_unique<StackAllocator>(stackBuf, stackSize);
         mgr.m_buddyAllocator = std::make_unique<BuddyAllocator>(buddyBuf, buddySize);
 
+        // 固定バッファのサブアロケーター予約分をここで記録する
+        // （PagedAllocator の初期ページ確保分をヒープ統計から除外しないため、
+        //   PagedAllocator 生成より前に記録しなければならない）
+        mgr.m_subAllocatorReservedBytes = master.getUsedBytes();
+
         // ページドアロケーターはバッキングとしてヒープ（マスター FreeList の残余）を使う
         const size_t pageSize = static_cast<size_t>(config.pagedAllocatorPageKB) * 1024;
         mgr.m_pagedAllocator = std::make_unique<PagedAllocator>(pageSize, master);
-
-        // サブアロケーター予約分を記録（ヒープ統計の補正に使う）
-        mgr.m_subAllocatorReservedBytes = master.getUsedBytes();
     } catch (const std::bad_alloc& e) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "MemoryManager: bad_alloc 例外によりリソース確保に失敗: %s", e.what());
@@ -234,7 +244,7 @@ MemoryManager::Stats MemoryManager::getStats() const {
         return Stats{};
     }
 
-    Stats stats;
+    Stats stats{};
 
     // フレームアロケーター
     stats.frameBytes      = m_frameAllocator->getUsedBytes();
