@@ -48,6 +48,10 @@ Game::Game() {
 }
 
 void Game::init() {
+    // 二重呼び出しを防ぐ（init() は一度だけ呼べる）
+    if (m_initialized) {
+        return;
+    }
     // 最初のシーンをセット（サブクラスの onInit() で実行される）
     onInit();
     m_sceneManager.applyPendingChanges();
