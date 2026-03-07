@@ -3,6 +3,7 @@
 #include "DebugBootScene.hpp"
 #include "TitleScene.hpp"
 #include "GameScene.hpp"
+#include "MemoryTestScene.hpp"
 #include "engine/core/Game.hpp"
 #include <imgui.h>
 
@@ -22,6 +23,12 @@ DebugBootScene::DebugBootScene(mk::Game& game)
         "GameScene",
         [this]() {
             m_game.sceneManager().replace(std::make_unique<GameScene>(m_game));
+        }
+    });
+    m_entries.push_back({
+        "MemoryTestScene",
+        [this]() {
+            m_game.sceneManager().replace(std::make_unique<MemoryTestScene>(m_game));
         }
     });
 }
