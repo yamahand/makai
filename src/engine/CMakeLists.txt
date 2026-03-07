@@ -10,13 +10,12 @@ add_library(makai_engine STATIC ${ENGINE_SOURCES})
 
 target_include_directories(makai_engine PUBLIC
     ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/external/SDL3_image-3.4.0/include
 )
 
 target_link_libraries(makai_engine PUBLIC
     SDL3::SDL3
     SDL3_ttf::SDL3_ttf
-    ${CMAKE_SOURCE_DIR}/external/SDL3_image-3.4.0/lib/x64/SDL3_image.lib
+    SDL3_image::SDL3_image
     imgui_sdl3
     nlohmann_json::nlohmann_json
     glm::glm
