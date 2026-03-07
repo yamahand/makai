@@ -30,11 +30,12 @@ protected:
             // プールアロケーター
             ImGui::Text("Object Pools:");
             auto& playerPool = memoryManager().getPool<Player>();
+            const float usageRatio = playerPool.getUsageRatio();
             ImGui::Text("  Player: %zu / %zu (%.1f%%)",
                         playerPool.getUsedCount(),
                         playerPool.getCapacity(),
-                        playerPool.getUsageRatio() * 100.0f);
-            ImGui::ProgressBar(playerPool.getUsageRatio(), ImVec2(-1, 0));
+                        usageRatio * 100.0f);
+            ImGui::ProgressBar(usageRatio, ImVec2(-1, 0));
         }
         ImGui::End();
     }
