@@ -2,6 +2,7 @@
 #include "Game.hpp"
 #include <concepts>
 #include <iostream>
+#include <exception>
 
 namespace mk {
 
