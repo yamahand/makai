@@ -2,6 +2,7 @@
 #include <SDL3/SDL.h>
 #include <imgui.h>
 #include <stdexcept>
+#include <string>
 
 namespace mk {
 
@@ -50,6 +51,7 @@ void Game::init() {
     // 最初のシーンをセット（サブクラスの onInit() で実行される）
     onInit();
     m_sceneManager.applyPendingChanges();
+    m_initialized = true;
 }
 
 Game::~Game() {
@@ -57,6 +59,9 @@ Game::~Game() {
 }
 
 void Game::run() {
+    if (!m_initialized) {
+        throw std::logic_error("Game::run() called before Game::init()");
+    }
     m_running = true;
     Uint64 prev = SDL_GetTicks();
 

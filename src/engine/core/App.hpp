@@ -6,9 +6,9 @@
 
 namespace mk {
 
-// T が Game を継承していることを要求するコンセプト
+// T が Game を継承していることを要求するコンセプト（Game 自身は除外）
 template<typename T>
-concept DerivedGame = std::derived_from<T, Game>;
+concept DerivedGame = std::derived_from<T, Game> && (!std::same_as<T, Game>);
 
 // main 関数の定型コード（初期化・実行・例外処理）をエンジン側に隠蔽するテンプレート関数
 template<DerivedGame T>

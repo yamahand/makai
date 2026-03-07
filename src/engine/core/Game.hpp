@@ -18,7 +18,7 @@ public:
     virtual ~Game();  // サブクラスを安全に破棄できるよう virtual にする
 
     void init();  // onInit() を呼ぶ + applyPendingChanges()（runApp<T> から構築後に呼ばれる）
-    void run();
+    void run();   // init() が呼ばれていない場合は std::logic_error を投げる
 
     SceneManager&          sceneManager()   { return m_sceneManager; }
     Window&                window()         { return *m_window; }
@@ -46,6 +46,7 @@ private:
     FontManager                     m_fontManager;
     std::unique_ptr<TextureManager> m_textureManager;
     bool                            m_running = false;
+    bool                            m_initialized = false;  // init() 呼び出し済みフラグ
 };
 
 } // namespace mk

@@ -6,6 +6,7 @@
 #include "game/scenes/DebugBootScene.hpp"
 #endif
 #include <imgui.h>
+#include <memory>
 
 namespace makai {
 
