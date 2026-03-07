@@ -23,7 +23,7 @@ protected:
 
     // ゲーム固有の ImGui 表示（Player プール統計）
     void onRenderImGui() override {
-        if (ImGui::Begin("Memory Stats")) {
+        if (ImGui::Begin("Game Memory Stats")) {
             ImGui::Separator();
 
             // プールアロケーター
