@@ -1,9 +1,5 @@
 #include "Game.hpp"
-#include "game/scenes/TitleScene.hpp"
-#include "game/objects/Player.hpp"
-#ifndef NDEBUG
-#include "game/scenes/DebugBootScene.hpp"
-#endif
+#include "../scenes/Scene.hpp"
 #include <SDL3/SDL.h>
 #include <imgui.h>
 #include <stdexcept>
@@ -49,13 +45,11 @@ Game::Game() {
 
     // テクスチャを読み込む
     m_textureManager->loadTexture("test", "assets/textures/CustomUVChecker_byValle_1K.png");
+}
 
-    // 最初のシーンをセット（デバッグビルドではシーン選択画面を表示）
-#ifndef NDEBUG
-    m_sceneManager.push(std::make_unique<makai::DebugBootScene>(*this));
-#else
-    m_sceneManager.push(std::make_unique<makai::TitleScene>(*this));
-#endif
+void Game::init() {
+    // 最初のシーンをセット（サブクラスの onInit() で実行される）
+    onInit();
     m_sceneManager.applyPendingChanges();
 }
 
@@ -181,18 +175,11 @@ void Game::renderImGui() {
         ImGui::Text("  Frame: %zu", stats.totalFrameAllocations);
         ImGui::Text("  Scene: %zu", stats.totalSceneAllocations);
 
-        ImGui::Separator();
-
-        // プールアロケーター
-        ImGui::Text("Object Pools:");
-        auto& playerPool = memoryManager().getPool<makai::Player>();
-        ImGui::Text("  Player: %zu / %zu (%.1f%%)",
-                    playerPool.getUsedCount(),
-                    playerPool.getCapacity(),
-                    playerPool.getUsageRatio() * 100.0f);
-        ImGui::ProgressBar(playerPool.getUsageRatio(), ImVec2(-1, 0));
     }
     ImGui::End();
+
+    // ゲーム側の追加 ImGui 表示（プール統計など）
+    onRenderImGui();
 
     m_imguiManager->render();
 }

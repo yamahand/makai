@@ -15,8 +15,9 @@ public:
     static constexpr int TARGET_FPS = 60;
 
     Game();
-    ~Game();
+    virtual ~Game();  // サブクラスを安全に破棄できるよう virtual にする
 
+    void init();  // onInit() を呼ぶ + applyPendingChanges()（runApp<T> から構築後に呼ばれる）
     void run();
 
     SceneManager&          sceneManager()   { return m_sceneManager; }
@@ -25,6 +26,12 @@ public:
     TextureManager&        textureManager() { return *m_textureManager; }
     memory::MemoryManager& memoryManager()  { return memory::MemoryManager::instance(); }
     const Config&          config()         const { return m_config; }
+
+protected:
+    // サブクラスで最初のシーンを push する（コンストラクタ外で呼ばれるため仮想ディスパッチが効く）
+    virtual void onInit() {}
+    // サブクラスでゲーム固有の ImGui を描画する（プール統計など）
+    virtual void onRenderImGui() {}
 
 private:
     void processEvents();
