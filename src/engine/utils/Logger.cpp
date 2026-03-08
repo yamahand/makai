@@ -19,8 +19,9 @@ spdlog::level::level_enum toSpdlogLevel(LogLevel level) {
         case LogLevel::Error:    return spdlog::level::err;
         case LogLevel::Critical: return spdlog::level::critical;
         case LogLevel::Off:      return spdlog::level::off;
-        default:                 return spdlog::level::info;
+        // default を持たず、未対応の enum 値はコンパイラ警告で検出する
     }
+    return spdlog::level::info; // 到達不能だが MSVC の警告抑制のため残す
 }
 
 } // anonymous namespace

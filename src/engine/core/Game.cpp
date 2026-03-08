@@ -1,5 +1,6 @@
 #include "Game.hpp"
 #include "../utils/Logger.hpp"
+#include "../scenes/Scene.hpp"
 #include <SDL3/SDL.h>
 #include <imgui.h>
 #include <stdexcept>
@@ -17,7 +18,6 @@ Game::Game() {
 
     // Logger 初期化以降の例外では Logger::shutdown() を確実に呼ぶ
     try {
-        // 設定ファイルを読み込む
         m_config = Config::load("config.json");
 
         // メモリマネージャーを最初に初期化（マスターバッファを確保）
