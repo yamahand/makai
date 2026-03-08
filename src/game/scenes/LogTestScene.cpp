@@ -53,9 +53,11 @@ void LogTestScene::render(SDL_Renderer* renderer) {
     auto logButton = [&](const char* label, ImVec4 color, auto logFn) {
         ImGui::PushStyleColor(ImGuiCol_Button, color);
         if (ImGui::Button(label, ImVec2(100, 0))) {
+            // 先にインクリメントして評価順序の不定動作を回避
+            ++m_counter;
             std::string msg = m_inputBuf[0] != '\0'
-                ? std::format("[{}] {}", ++m_counter, m_inputBuf)
-                : std::format("[{}] (テストメッセージ {})", ++m_counter, m_counter);
+                ? std::format("[{}] {}", m_counter, m_inputBuf)
+                : std::format("[{}] (テストメッセージ {})", m_counter, m_counter);
             logFn(msg);
             m_entries.push_back({ label, msg });
         }
