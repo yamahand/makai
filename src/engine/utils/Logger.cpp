@@ -9,6 +9,9 @@ namespace mk {
 
 namespace {
 
+// 初期化済みフラグ
+bool m_initialized = false;
+
 // spdlog レベルへの変換
 spdlog::level::level_enum toSpdlogLevel(LogLevel level) {
     switch (level) {
@@ -27,6 +30,9 @@ spdlog::level::level_enum toSpdlogLevel(LogLevel level) {
 } // anonymous namespace
 
 void Logger::init(std::string_view logFile) {
+    // 二重初期化を防ぐ
+    if (m_initialized) return;
+
     // コンソールシンク（カラー付き）
     auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     consoleSink->set_level(spdlog::level::trace);
@@ -50,6 +56,7 @@ void Logger::init(std::string_view logFile) {
 
 void Logger::shutdown() {
     spdlog::shutdown();
+    m_initialized = false;
 }
 
 void Logger::setLevel(LogLevel level) {

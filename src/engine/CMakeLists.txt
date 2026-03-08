@@ -19,6 +19,10 @@ target_link_libraries(makai_engine PUBLIC
     imgui_sdl3
     nlohmann_json::nlohmann_json
     glm::glm
+)
+
+# spdlog はエンジン内部の実装詳細のため PRIVATE リンク（game 側に漏れない）
+target_link_libraries(makai_engine PRIVATE
     spdlog::spdlog
 )
 

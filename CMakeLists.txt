@@ -101,6 +101,12 @@ FetchContent_Declare(
 # GLM options: disable library build (header-only mode)
 set(GLM_BUILD_LIBRARY OFF CACHE BOOL "" FORCE)
 set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+
+# spdlog options: テスト・ベンチマーク・サンプルを無効化してビルド時間を削減
+set(SPDLOG_BUILD_TESTS   OFF CACHE BOOL "" FORCE)
+set(SPDLOG_BUILD_BENCH   OFF CACHE BOOL "" FORCE)
+set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
+
 FetchContent_MakeAvailable(imgui json glm spdlog)
 
 # Create ImGui library with SDL3 backend
