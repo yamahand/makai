@@ -283,7 +283,8 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
 
 template<typename T>
 bool MemoryManager::hasPool() const {
-    if (!m_pools.has_value()) return false;
+    assert(m_masterResource && "MemoryManager::init() が呼ばれていません");
+    assert(m_pools.has_value() && "MemoryManager::init() が呼ばれていません");
     return m_pools->find(std::type_index(typeid(T))) != m_pools->end();
 }
 
