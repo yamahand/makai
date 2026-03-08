@@ -145,6 +145,11 @@ private:
         const size_t poolSize;  ///< getPool<T, PoolSize>() 呼び出し時のテンプレート引数 PoolSize（異なる PoolSize での再取得を検出するために記録）
         explicit IPoolBase(size_t ps) : poolSize(ps) {}
         virtual ~IPoolBase() = default;
+
+        /// 動的型のデストラクタを呼び出し、領域を allocator に返却する
+        /// PoolHolderDeleter から呼ばれる。明示的なデストラクタ呼び出しでは
+        /// 仮想ディスパッチが保証されないため、この仮想関数を経由する。
+        virtual void destroy(FirstFitAllocator& allocator) noexcept = 0;
     };
 
     // 型付きプールラッパー
@@ -155,6 +160,12 @@ private:
         /// 外部バッファ版（マスター FreeList からブロック配列を受け取る）
         PoolHolder(typename PoolAllocator<T, PoolSize>::Block* blocks, FirstFitAllocator& backing)
             : IPoolBase(PoolSize), pool(blocks, backing) {}
+
+        /// PoolAllocator（ブロック配列返却を含む）を破棄し、自身の領域を返却する
+        void destroy(FirstFitAllocator& allocator) noexcept override {
+            this->~PoolHolder();        // PoolHolder（と PoolAllocator）のデストラクタを呼ぶ
+            allocator.deallocate(this); // PoolHolder 本体の領域をマスター FreeList に返却
+        }
     };
 
     /// PoolHolder 本体をマスター FreeList へ返却するカスタムデリーター
@@ -162,8 +173,7 @@ private:
         FirstFitAllocator* allocator = nullptr;  ///< 返却先アロケーター
         void operator()(IPoolBase* ptr) const {
             if (!ptr || !allocator) return;
-            ptr->~IPoolBase();           // 仮想デストラクタ経由で PoolAllocator も破棄（ブロック配列も返却される）
-            allocator->deallocate(ptr);  // PoolHolder 本体をマスター FreeList に返却
+            ptr->destroy(*allocator);  // 仮想 destroy() 経由で動的型を破棄し領域を返却
         }
     };
 
