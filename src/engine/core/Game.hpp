@@ -20,9 +20,9 @@ public:
     void init();  // onInit() を呼ぶ + applyPendingChanges()（runApp<T> から構築後に呼ばれる）
     void run();   // init() が呼ばれていない場合は std::logic_error を投げる
 
-    SceneManager&          sceneManager()   { return m_sceneManager; }
+    SceneManager&          sceneManager()   { return *m_sceneManager; }
     Window&                window()         { return *m_window; }
-    FontManager&           fontManager()    { return m_fontManager; }
+    FontManager&           fontManager()    { return *m_fontManager; }
     TextureManager&        textureManager() { return *m_textureManager; }
     memory::MemoryManager& memoryManager()  { return memory::MemoryManager::instance(); }
     const Config&          config()         const { return m_config; }
@@ -42,8 +42,8 @@ private:
     Config                          m_config;
     std::unique_ptr<Window>         m_window;
     std::unique_ptr<ImGuiManager>   m_imguiManager;
-    SceneManager                    m_sceneManager;
-    FontManager                     m_fontManager;
+    std::unique_ptr<SceneManager>   m_sceneManager;
+    std::unique_ptr<FontManager>    m_fontManager;
     std::unique_ptr<TextureManager> m_textureManager;
     bool                            m_running = false;
     bool                            m_initialized = false;  // init() 呼び出し済みフラグ

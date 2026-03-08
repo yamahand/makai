@@ -87,6 +87,10 @@ public:
     template<typename T, size_t PoolSize = 256>
     PoolAllocator<T, PoolSize>& getPool();
 
+    /// 型Tのプールアロケーターが既に生成済みかどうかを確認する（プールを生成しない）
+    template<typename T>
+    bool hasPool() const;
+
     /// フレーム終了時に呼ぶ（Game::render()から）
     void onFrameEnd();
 
@@ -254,6 +258,12 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
     // 既存プールを返す
     auto* holder = static_cast<PoolHolder<T, PoolSize>*>(it->second.get());
     return holder->pool;
+}
+
+template<typename T>
+bool MemoryManager::hasPool() const {
+    if (!m_pools.has_value()) return false;
+    return m_pools->find(std::type_index(typeid(T))) != m_pools->end();
 }
 
 } // namespace mk::memory

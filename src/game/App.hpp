@@ -27,15 +27,19 @@ protected:
         if (ImGui::Begin("Game Memory Stats")) {
             ImGui::Separator();
 
-            // プールアロケーター
+            // プールアロケーター（生成済みのプールのみ表示）
             ImGui::Text("Object Pools:");
-            auto& playerPool = memoryManager().getPool<Player>();
-            const float usageRatio = playerPool.getUsageRatio();
-            ImGui::Text("  Player: %zu / %zu (%.1f%%)",
-                        playerPool.getUsedCount(),
-                        playerPool.getCapacity(),
-                        usageRatio * 100.0f);
-            ImGui::ProgressBar(usageRatio, ImVec2(-1, 0));
+            if (memoryManager().hasPool<Player>()) {
+                auto& playerPool = memoryManager().getPool<Player>();
+                const float usageRatio = playerPool.getUsageRatio();
+                ImGui::Text("  Player: %zu / %zu (%.1f%%)",
+                            playerPool.getUsedCount(),
+                            playerPool.getCapacity(),
+                            usageRatio * 100.0f);
+                ImGui::ProgressBar(usageRatio, ImVec2(-1, 0));
+            } else {
+                ImGui::TextDisabled("  (未生成)");
+            }
         }
         ImGui::End();
     }
