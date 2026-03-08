@@ -7,6 +7,7 @@
 #include <SDL3/SDL_log.h>
 #include <memory_resource>
 #include <new>
+#include <stdexcept>
 #include <unordered_map>
 #include <typeindex>
 #include <memory>
@@ -141,6 +142,8 @@ private:
 
     // 型消去されたプールの基底クラス
     struct IPoolBase {
+        const size_t poolSize;  ///< getPool<T, PoolSize>() 呼び出し時のテンプレート引数 PoolSize（異なる PoolSize での再取得を検出するために記録）
+        explicit IPoolBase(size_t ps) : poolSize(ps) {}
         virtual ~IPoolBase() = default;
     };
 
@@ -151,7 +154,7 @@ private:
 
         /// 外部バッファ版（マスター FreeList からブロック配列を受け取る）
         PoolHolder(typename PoolAllocator<T, PoolSize>::Block* blocks, FirstFitAllocator& backing)
-            : pool(blocks, backing) {}
+            : IPoolBase(PoolSize), pool(blocks, backing) {}
     };
 
     /// PoolHolder 本体をマスター FreeList へ返却するカスタムデリーター
@@ -255,8 +258,16 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
         return *poolPtr;
     }
 
-    // 既存プールを返す
-    auto* holder = static_cast<PoolHolder<T, PoolSize>*>(it->second.get());
+    // 既存プールを返す（PoolSize が一致していることを確認する）
+    auto* base = it->second.get();
+    if (base->poolSize != PoolSize) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "MemoryManager::getPool: PoolSize 不一致 (型: %s, 既存: %zu, 要求: %zu)",
+                     typeid(T).name(), base->poolSize, PoolSize);
+        assert(false && "MemoryManager::getPool: PoolSize mismatch");
+        throw std::logic_error("MemoryManager::getPool: PoolSize mismatch");
+    }
+    auto* holder = static_cast<PoolHolder<T, PoolSize>*>(base);
     return holder->pool;
 }
 

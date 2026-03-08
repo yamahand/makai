@@ -19,38 +19,52 @@ Game::Game() {
         throw std::runtime_error(std::string("SDL_Init failed: ") + SDL_GetError());
     }
 
-    // 設定からウィンドウを生成
-    m_window = std::make_unique<Window>(
-        m_config.window.title,
-        m_config.window.width,
-        m_config.window.height
-    );
+    // SDL_Init 成功後にコンストラクタが中断した場合でも SDL_Quit() を確実に呼ぶ。
+    // コンストラクタが例外で中断すると Game::~Game() は呼ばれないため、
+    // SDL 依存メンバーを正しい順序で破棄してから SDL_Quit() するスコープガードを設ける。
+    try {
+        // 設定からウィンドウを生成
+        m_window = std::make_unique<Window>(
+            m_config.window.title,
+            m_config.window.width,
+            m_config.window.height
+        );
 
-    // ImGui を初期化
-    m_imguiManager = std::make_unique<ImGuiManager>(
-        m_window->getSDLWindow(),
-        m_window->getRenderer()
-    );
+        // ImGui を初期化
+        m_imguiManager = std::make_unique<ImGuiManager>(
+            m_window->getSDLWindow(),
+            m_window->getRenderer()
+        );
 
-    // TextureManager を初期化
-    m_textureManager = std::make_unique<TextureManager>(m_window->getRenderer());
+        // TextureManager を初期化
+        m_textureManager = std::make_unique<TextureManager>(m_window->getRenderer());
 
-    // SceneManager を初期化
-    m_sceneManager = std::make_unique<SceneManager>();
+        // SceneManager を初期化
+        m_sceneManager = std::make_unique<SceneManager>();
 
-    // FontManager を初期化
-    m_fontManager = std::make_unique<FontManager>();
+        // FontManager を初期化
+        m_fontManager = std::make_unique<FontManager>();
 
-    // 設定からフォントを読み込む
-    m_fontManager->loadFont("default",
-                           m_config.defaultFont.path,
-                           m_config.defaultFont.size);
-    m_fontManager->loadFont("large",
-                           m_config.largeFont.path,
-                           m_config.largeFont.size);
+        // 設定からフォントを読み込む
+        m_fontManager->loadFont("default",
+                               m_config.defaultFont.path,
+                               m_config.defaultFont.size);
+        m_fontManager->loadFont("large",
+                               m_config.largeFont.path,
+                               m_config.largeFont.size);
 
-    // テクスチャを読み込む
-    m_textureManager->loadTexture("test", "assets/textures/CustomUVChecker_byValle_1K.png");
+        // テクスチャを読み込む
+        m_textureManager->loadTexture("test", "assets/textures/CustomUVChecker_byValle_1K.png");
+    } catch (...) {
+        // ~Game() と同じ順序で SDL 依存メンバーを破棄してから SDL_Quit()
+        m_sceneManager.reset();
+        m_textureManager.reset();
+        m_imguiManager.reset();
+        m_fontManager.reset();
+        m_window.reset();
+        SDL_Quit();
+        throw;
+    }
 }
 
 void Game::init() {
