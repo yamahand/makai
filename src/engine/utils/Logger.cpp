@@ -65,6 +65,7 @@ void Logger::setLevel(LogLevel level) {
 }
 
 void Logger::logImpl(LogLevel level, std::string_view msg) {
+    if (!m_initialized) return;
     // "{}" 経由で渡すことで msg 中の {} をフォーマット文字として解釈させない
     spdlog::log(toSpdlogLevel(level), "{}", msg);
 }
