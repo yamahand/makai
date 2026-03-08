@@ -1,6 +1,6 @@
 #pragma once
 #include "Game.hpp"
-#include <SDL3/SDL.h>
+#include <SDL3/SDL_log.h>
 #include <concepts>
 #include <exception>
 
