@@ -1,7 +1,7 @@
 #pragma once
 #include "Game.hpp"
+#include <SDL3/SDL.h>
 #include <concepts>
-#include <iostream>
 #include <exception>
 
 namespace mk {
@@ -20,7 +20,7 @@ int runApp(int argc, char* argv[]) {
         app.init();  // 仮想関数が正しくディスパッチされるよう、構築後に明示的に呼ぶ
         app.run();
     } catch (const std::exception& e) {
-        std::cerr << "[ERROR] " << e.what() << std::endl;
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", e.what());
         return 1;
     }
     return 0;

@@ -48,9 +48,9 @@ Game::Game() {
 }
 
 void Game::init() {
-    // 二重呼び出しを防ぐ（init() は一度だけ呼べる）
+    // 二重呼び出しは論理エラーとして扱う（init() は一度だけ呼べる）
     if (m_initialized) {
-        return;
+        throw std::logic_error("Game::init() called more than once");
     }
 
     // 再入を防ぐため、onInit() を呼ぶ前に初期化済みフラグを立てる
@@ -68,6 +68,11 @@ void Game::init() {
 }
 
 Game::~Game() {
+    // SDL に依存するメンバーを明示的に先に破棄してから SDL_Quit() を呼ぶ
+    // （ImGuiManager や Window のデストラクタが SDL を使うため順序が重要）
+    m_textureManager.reset();
+    m_imguiManager.reset();
+    m_window.reset();
     SDL_Quit();
 }
 
