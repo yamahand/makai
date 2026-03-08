@@ -1,12 +1,8 @@
 #include "Game.hpp"
-#include "game/scenes/TitleScene.hpp"
-#include "game/objects/Player.hpp"
-#ifndef NDEBUG
-#include "game/scenes/DebugBootScene.hpp"
-#endif
 #include <SDL3/SDL.h>
 #include <imgui.h>
 #include <stdexcept>
+#include <string>
 
 namespace mk {
 
@@ -23,47 +19,89 @@ Game::Game() {
         throw std::runtime_error(std::string("SDL_Init failed: ") + SDL_GetError());
     }
 
-    // 設定からウィンドウを生成
-    m_window = std::make_unique<Window>(
-        m_config.window.title,
-        m_config.window.width,
-        m_config.window.height
-    );
+    // SDL_Init 成功後にコンストラクタが中断した場合でも SDL_Quit() を確実に呼ぶ。
+    // コンストラクタが例外で中断すると Game::~Game() は呼ばれないため、
+    // SDL 依存メンバーを正しい順序で破棄してから SDL_Quit() するスコープガードを設ける。
+    try {
+        // 設定からウィンドウを生成
+        m_window = std::make_unique<Window>(
+            m_config.window.title,
+            m_config.window.width,
+            m_config.window.height
+        );
 
-    // ImGui を初期化
-    m_imguiManager = std::make_unique<ImGuiManager>(
-        m_window->getSDLWindow(),
-        m_window->getRenderer()
-    );
+        // ImGui を初期化
+        m_imguiManager = std::make_unique<ImGuiManager>(
+            m_window->getSDLWindow(),
+            m_window->getRenderer()
+        );
 
-    // TextureManager を初期化
-    m_textureManager = std::make_unique<TextureManager>(m_window->getRenderer());
+        // TextureManager を初期化
+        m_textureManager = std::make_unique<TextureManager>(m_window->getRenderer());
 
-    // 設定からフォントを読み込む
-    m_fontManager.loadFont("default",
-                          m_config.defaultFont.path,
-                          m_config.defaultFont.size);
-    m_fontManager.loadFont("large",
-                          m_config.largeFont.path,
-                          m_config.largeFont.size);
+        // SceneManager を初期化
+        m_sceneManager = std::make_unique<SceneManager>();
 
-    // テクスチャを読み込む
-    m_textureManager->loadTexture("test", "assets/textures/CustomUVChecker_byValle_1K.png");
+        // FontManager を初期化
+        m_fontManager = std::make_unique<FontManager>();
 
-    // 最初のシーンをセット（デバッグビルドではシーン選択画面を表示）
-#ifndef NDEBUG
-    m_sceneManager.push(std::make_unique<makai::DebugBootScene>(*this));
-#else
-    m_sceneManager.push(std::make_unique<makai::TitleScene>(*this));
-#endif
-    m_sceneManager.applyPendingChanges();
+        // 設定からフォントを読み込む
+        m_fontManager->loadFont("default",
+                               m_config.defaultFont.path,
+                               m_config.defaultFont.size);
+        m_fontManager->loadFont("large",
+                               m_config.largeFont.path,
+                               m_config.largeFont.size);
+
+        // テクスチャを読み込む
+        m_textureManager->loadTexture("test", "assets/textures/CustomUVChecker_byValle_1K.png");
+    } catch (...) {
+        // ~Game() と同じ順序で SDL 依存メンバーを破棄してから SDL_Quit()
+        m_sceneManager.reset();
+        m_textureManager.reset();
+        m_imguiManager.reset();
+        m_fontManager.reset();
+        m_window.reset();
+        SDL_Quit();
+        throw;
+    }
+}
+
+void Game::init() {
+    // 二重呼び出しは論理エラーとして扱う（init() は一度だけ呼べる）
+    if (m_initialized) {
+        throw std::logic_error("Game::init() called more than once");
+    }
+
+    // 再入を防ぐため、onInit() を呼ぶ前に初期化済みフラグを立てる
+    m_initialized = true;
+
+    try {
+        // 最初のシーンをセット（サブクラスの onInit() で実行される）
+        onInit();
+        m_sceneManager->applyPendingChanges();
+    } catch (...) {
+        // 初期化中に例外が発生した場合は、シーンマネージャーの状態が不定となるため
+        // 再初期化は不可とし、m_initialized は true のままにしておく
+        throw;
+    }
 }
 
 Game::~Game() {
+    // SDL/SDL_ttf に依存するメンバーを明示的に先に破棄してから SDL_Quit() を呼ぶ
+    // 破棄順序: シーン → テクスチャ → ImGui → フォント（TTF_Quit） → ウィンドウ → SDL_Quit
+    m_sceneManager.reset();
+    m_textureManager.reset();
+    m_imguiManager.reset();
+    m_fontManager.reset();
+    m_window.reset();
     SDL_Quit();
 }
 
 void Game::run() {
+    if (!m_initialized) {
+        throw std::logic_error("Game::run() called before Game::init()");
+    }
     m_running = true;
     Uint64 prev = SDL_GetTicks();
 
@@ -77,10 +115,10 @@ void Game::run() {
         update(delta);
         render();
 
-        m_sceneManager.applyPendingChanges();
+        m_sceneManager->applyPendingChanges();
 
         // シーンが空になったら終了
-        if (m_sceneManager.isEmpty()) m_running = false;
+        if (m_sceneManager->isEmpty()) m_running = false;
     }
 }
 
@@ -93,12 +131,12 @@ void Game::processEvents() {
         if (event.type == SDL_EVENT_QUIT) {
             m_running = false;
         }
-        m_sceneManager.handleEvent(event);
+        m_sceneManager->handleEvent(event);
     }
 }
 
 void Game::update(float deltaTime) {
-    m_sceneManager.update(deltaTime);
+    m_sceneManager->update(deltaTime);
 }
 
 void Game::render() {
@@ -109,7 +147,7 @@ void Game::render() {
     // ImGui フレームを開始（シーンの render より前に呼ぶ必要がある）
     m_imguiManager->newFrame();
 
-    m_sceneManager.render(renderer);
+    m_sceneManager->render(renderer);
 
     // ImGui のゲーム共通UIをレンダリング
     renderImGui();
@@ -181,18 +219,11 @@ void Game::renderImGui() {
         ImGui::Text("  Frame: %zu", stats.totalFrameAllocations);
         ImGui::Text("  Scene: %zu", stats.totalSceneAllocations);
 
-        ImGui::Separator();
-
-        // プールアロケーター
-        ImGui::Text("Object Pools:");
-        auto& playerPool = memoryManager().getPool<makai::Player>();
-        ImGui::Text("  Player: %zu / %zu (%.1f%%)",
-                    playerPool.getUsedCount(),
-                    playerPool.getCapacity(),
-                    playerPool.getUsageRatio() * 100.0f);
-        ImGui::ProgressBar(playerPool.getUsageRatio(), ImVec2(-1, 0));
     }
     ImGui::End();
+
+    // ゲーム側の追加 ImGui 表示（プール統計など）
+    onRenderImGui();
 
     m_imguiManager->render();
 }

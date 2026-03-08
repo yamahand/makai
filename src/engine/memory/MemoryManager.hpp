@@ -10,6 +10,7 @@
 #include <SDL3/SDL_log.h>
 #include <memory_resource>
 #include <new>
+#include <stdexcept>
 #include <unordered_map>
 #include <typeindex>
 #include <memory>
@@ -120,6 +121,10 @@ public:
     template<typename T, size_t PoolSize = 256>
     PoolAllocator<T, PoolSize>& getPool();
 
+    /// 型Tのプールアロケーターが既に生成済みかどうかを確認する（プールを生成しない）
+    template<typename T>
+    bool hasPool() const;
+
     /// フレーム終了時に呼ぶ（Game::render()から）
     void onFrameEnd();
 
@@ -186,7 +191,14 @@ private:
 
     // 型消去されたプールの基底クラス
     struct IPoolBase {
+        const size_t poolSize;  ///< getPool<T, PoolSize>() 呼び出し時のテンプレート引数 PoolSize（異なる PoolSize での再取得を検出するために記録）
+        explicit IPoolBase(size_t ps) : poolSize(ps) {}
         virtual ~IPoolBase() = default;
+
+        /// 動的型のデストラクタを呼び出し、領域を allocator に返却する
+        /// PoolHolderDeleter から呼ばれる。明示的なデストラクタ呼び出しでは
+        /// 仮想ディスパッチが保証されないため、この仮想関数を経由する。
+        virtual void destroy(FirstFitAllocator& allocator) noexcept = 0;
     };
 
     // 型付きプールラッパー
@@ -196,7 +208,13 @@ private:
 
         /// 外部バッファ版（マスター FreeList からブロック配列を受け取る）
         PoolHolder(typename PoolAllocator<T, PoolSize>::Block* blocks, FirstFitAllocator& backing)
-            : pool(blocks, backing) {}
+            : IPoolBase(PoolSize), pool(blocks, backing) {}
+
+        /// PoolAllocator（ブロック配列返却を含む）を破棄し、自身の領域を返却する
+        void destroy(FirstFitAllocator& allocator) noexcept override {
+            this->~PoolHolder();        // PoolHolder（と PoolAllocator）のデストラクタを呼ぶ
+            allocator.deallocate(this); // PoolHolder 本体の領域をマスター FreeList に返却
+        }
     };
 
     /// PoolHolder 本体をマスター FreeList へ返却するカスタムデリーター
@@ -204,8 +222,7 @@ private:
         FirstFitAllocator* allocator = nullptr;  ///< 返却先アロケーター
         void operator()(IPoolBase* ptr) const {
             if (!ptr || !allocator) return;
-            ptr->~IPoolBase();           // 仮想デストラクタ経由で PoolAllocator も破棄（ブロック配列も返却される）
-            allocator->deallocate(ptr);  // PoolHolder 本体をマスター FreeList に返却
+            ptr->destroy(*allocator);  // 仮想 destroy() 経由で動的型を破棄し領域を返却
         }
     };
 
@@ -303,9 +320,24 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
         return *poolPtr;
     }
 
-    // 既存プールを返す
-    auto* holder = static_cast<PoolHolder<T, PoolSize>*>(it->second.get());
+    // 既存プールを返す（PoolSize が一致していることを確認する）
+    auto* base = it->second.get();
+    if (base->poolSize != PoolSize) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "MemoryManager::getPool: PoolSize 不一致 (型: %s, 既存: %zu, 要求: %zu)",
+                     typeid(T).name(), base->poolSize, PoolSize);
+        assert(false && "MemoryManager::getPool: PoolSize mismatch");
+        throw std::logic_error("MemoryManager::getPool: PoolSize mismatch");
+    }
+    auto* holder = static_cast<PoolHolder<T, PoolSize>*>(base);
     return holder->pool;
+}
+
+template<typename T>
+bool MemoryManager::hasPool() const {
+    assert(m_masterResource && "MemoryManager::init() が呼ばれていません");
+    assert(m_pools.has_value() && "MemoryManager::init() が呼ばれていません");
+    return m_pools->find(std::type_index(typeid(T))) != m_pools->end();
 }
 
 } // namespace mk::memory
