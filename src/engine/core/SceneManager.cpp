@@ -4,6 +4,8 @@
 
 namespace mk {
 
+SceneManager::~SceneManager() = default;
+
 void SceneManager::push(std::unique_ptr<Scene> scene) {
     m_pending.push_back({ Command::Push, std::move(scene) });
 }

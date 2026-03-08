@@ -1,6 +1,5 @@
 #include "Game.hpp"
 #include "../utils/Logger.hpp"
-#include "../scenes/Scene.hpp"
 #include <SDL3/SDL.h>
 #include <imgui.h>
 #include <stdexcept>

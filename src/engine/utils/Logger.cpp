@@ -52,6 +52,7 @@ void Logger::init(std::string_view logFile) {
     spdlog::set_default_logger(logger);
 
     spdlog::info("Logger initialized");
+    m_initialized = true;
 }
 
 void Logger::shutdown() {

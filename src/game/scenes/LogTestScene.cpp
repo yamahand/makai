@@ -85,7 +85,7 @@ void LogTestScene::render(SDL_Renderer* renderer) {
     ImGui::Text("出力履歴 (%zu 件):", m_entries.size());
     if (ImGui::Button("クリア")) m_entries.clear();
 
-    ImGui::BeginChild("##log_scroll", ImVec2(0, 0), true);
+    ImGui::BeginChild("##log_scroll", ImVec2(0, 0), ImGuiChildFlags_Borders);
     for (auto it = m_entries.rbegin(); it != m_entries.rend(); ++it) {
         ImVec4 col = ImVec4(1, 1, 1, 1);
         if (it->level == "Trace")    col = ImVec4(0.6f, 0.6f, 0.6f, 1);
