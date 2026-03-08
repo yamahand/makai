@@ -1,4 +1,5 @@
 #include "Game.hpp"
+#include "../utils/Logger.hpp"
 #include <SDL3/SDL.h>
 #include <imgui.h>
 #include <stdexcept>
@@ -7,6 +8,9 @@
 namespace mk {
 
 Game::Game() {
+    // ロガーを最初に初期化（他のモジュールより前に）
+    Logger::init();
+
     // 設定ファイルを読み込む
     m_config = Config::load("config.json");
 
@@ -88,6 +92,7 @@ void Game::init() {
 }
 
 Game::~Game() {
+    Logger::shutdown();
     // SDL/SDL_ttf に依存するメンバーを明示的に先に破棄してから SDL_Quit() を呼ぶ
     // 破棄順序: シーン → テクスチャ → ImGui → フォント（TTF_Quit） → ウィンドウ → SDL_Quit
     m_sceneManager.reset();

@@ -19,6 +19,7 @@ target_link_libraries(makai_engine PUBLIC
     imgui_sdl3
     nlohmann_json::nlohmann_json
     glm::glm
+    spdlog::spdlog
 )
 
 # MSVC: UTF-8 without BOM support for Japanese comments

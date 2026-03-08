@@ -91,10 +91,17 @@ FetchContent_Declare(
     GIT_TAG        1.0.2
 )
 
+# spdlog
+FetchContent_Declare(
+    spdlog
+    GIT_REPOSITORY https://github.com/gabime/spdlog.git
+    GIT_TAG        v1.15.3
+)
+
 # GLM options: disable library build (header-only mode)
 set(GLM_BUILD_LIBRARY OFF CACHE BOOL "" FORCE)
 set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(imgui json glm)
+FetchContent_MakeAvailable(imgui json glm spdlog)
 
 # Create ImGui library with SDL3 backend
 add_library(imgui_sdl3 STATIC
