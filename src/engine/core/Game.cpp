@@ -52,10 +52,19 @@ void Game::init() {
     if (m_initialized) {
         return;
     }
-    // 最初のシーンをセット（サブクラスの onInit() で実行される）
-    onInit();
-    m_sceneManager.applyPendingChanges();
+
+    // 再入を防ぐため、onInit() を呼ぶ前に初期化済みフラグを立てる
     m_initialized = true;
+
+    try {
+        // 最初のシーンをセット（サブクラスの onInit() で実行される）
+        onInit();
+        m_sceneManager.applyPendingChanges();
+    } catch (...) {
+        // 初期化中に例外が発生した場合は、再初期化できるようフラグを戻す
+        m_initialized = false;
+        throw;
+    }
 }
 
 Game::~Game() {
