@@ -81,8 +81,8 @@ void Game::init() {
         onInit();
         m_sceneManager->applyPendingChanges();
     } catch (...) {
-        // 初期化中に例外が発生した場合は、再初期化できるようフラグを戻す
-        m_initialized = false;
+        // 初期化中に例外が発生した場合は、シーンマネージャーの状態が不定となるため
+        // 再初期化は不可とし、m_initialized は true のままにしておく
         throw;
     }
 }
