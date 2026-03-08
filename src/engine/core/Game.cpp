@@ -35,13 +35,19 @@ Game::Game() {
     // TextureManager を初期化
     m_textureManager = std::make_unique<TextureManager>(m_window->getRenderer());
 
+    // SceneManager を初期化
+    m_sceneManager = std::make_unique<SceneManager>();
+
+    // FontManager を初期化
+    m_fontManager = std::make_unique<FontManager>();
+
     // 設定からフォントを読み込む
-    m_fontManager.loadFont("default",
-                          m_config.defaultFont.path,
-                          m_config.defaultFont.size);
-    m_fontManager.loadFont("large",
-                          m_config.largeFont.path,
-                          m_config.largeFont.size);
+    m_fontManager->loadFont("default",
+                           m_config.defaultFont.path,
+                           m_config.defaultFont.size);
+    m_fontManager->loadFont("large",
+                           m_config.largeFont.path,
+                           m_config.largeFont.size);
 
     // テクスチャを読み込む
     m_textureManager->loadTexture("test", "assets/textures/CustomUVChecker_byValle_1K.png");
@@ -59,7 +65,7 @@ void Game::init() {
     try {
         // 最初のシーンをセット（サブクラスの onInit() で実行される）
         onInit();
-        m_sceneManager.applyPendingChanges();
+        m_sceneManager->applyPendingChanges();
     } catch (...) {
         // 初期化中に例外が発生した場合は、再初期化できるようフラグを戻す
         m_initialized = false;
@@ -68,10 +74,12 @@ void Game::init() {
 }
 
 Game::~Game() {
-    // SDL に依存するメンバーを明示的に先に破棄してから SDL_Quit() を呼ぶ
-    // （ImGuiManager や Window のデストラクタが SDL を使うため順序が重要）
+    // SDL/SDL_ttf に依存するメンバーを明示的に先に破棄してから SDL_Quit() を呼ぶ
+    // 破棄順序: シーン → テクスチャ → ImGui → フォント（TTF_Quit） → ウィンドウ → SDL_Quit
+    m_sceneManager.reset();
     m_textureManager.reset();
     m_imguiManager.reset();
+    m_fontManager.reset();
     m_window.reset();
     SDL_Quit();
 }
@@ -93,10 +101,10 @@ void Game::run() {
         update(delta);
         render();
 
-        m_sceneManager.applyPendingChanges();
+        m_sceneManager->applyPendingChanges();
 
         // シーンが空になったら終了
-        if (m_sceneManager.isEmpty()) m_running = false;
+        if (m_sceneManager->isEmpty()) m_running = false;
     }
 }
 
@@ -109,12 +117,12 @@ void Game::processEvents() {
         if (event.type == SDL_EVENT_QUIT) {
             m_running = false;
         }
-        m_sceneManager.handleEvent(event);
+        m_sceneManager->handleEvent(event);
     }
 }
 
 void Game::update(float deltaTime) {
-    m_sceneManager.update(deltaTime);
+    m_sceneManager->update(deltaTime);
 }
 
 void Game::render() {
@@ -125,7 +133,7 @@ void Game::render() {
     // ImGui フレームを開始（シーンの render より前に呼ぶ必要がある）
     m_imguiManager->newFrame();
 
-    m_sceneManager.render(renderer);
+    m_sceneManager->render(renderer);
 
     // ImGui のゲーム共通UIをレンダリング
     renderImGui();
