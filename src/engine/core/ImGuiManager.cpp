@@ -17,24 +17,34 @@ ImGuiManager::ImGuiManager(SDL_Window* window, SDL_Renderer* renderer, const Fon
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // キーボード操作を有効化
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // ゲームパッド操作を有効化
 
-    // 日本語フォントを登録（パスが空またはファイル未存在の場合はデフォルトフォントにフォールバック）
+    // 日本語フォントを登録（パスが空・ファイル未存在・サイズ不正の場合はデフォルトフォントにフォールバック）
     if (fontConfig.path.empty()) {
         Logger::warn("ImGuiManager: フォントパスが空のため、デフォルトフォントを使用します（日本語非対応）");
-    } else if (!std::filesystem::exists(fontConfig.path)) {
-        Logger::warn("ImGuiManager: フォントファイルが見つかりません: {} デフォルトフォントを使用します（日本語非対応）",
-                     fontConfig.path);
+    } else if (fontConfig.size <= 0) {
+        Logger::warn("ImGuiManager: フォントサイズが不正です（{}）、デフォルトフォントを使用します（日本語非対応）",
+                     fontConfig.size);
     } else {
-        ImFont* font = io.Fonts->AddFontFromFileTTF(
-            fontConfig.path.c_str(),
-            static_cast<float>(fontConfig.size),
-            nullptr,
-            io.Fonts->GetGlyphRangesJapanese()
-        );
-        if (font == nullptr) {
-            Logger::error("ImGuiManager: フォントの読み込みに失敗しました: {} デフォルトフォントを使用します（日本語非対応）",
-                          fontConfig.path);
+        std::error_code ec;
+        const bool fileExists = std::filesystem::exists(fontConfig.path, ec);
+        if (ec) {
+            Logger::warn("ImGuiManager: フォントファイルの確認中にエラーが発生しました: {} ({}) デフォルトフォントを使用します（日本語非対応）",
+                         fontConfig.path, ec.message());
+        } else if (!fileExists) {
+            Logger::warn("ImGuiManager: フォントファイルが見つかりません: {} デフォルトフォントを使用します（日本語非対応）",
+                         fontConfig.path);
         } else {
-            Logger::info("ImGuiManager: 日本語フォントを読み込みました: {}", fontConfig.path);
+            ImFont* font = io.Fonts->AddFontFromFileTTF(
+                fontConfig.path.c_str(),
+                static_cast<float>(fontConfig.size),
+                nullptr,
+                io.Fonts->GetGlyphRangesJapanese()
+            );
+            if (font == nullptr) {
+                Logger::error("ImGuiManager: フォントの読み込みに失敗しました: {} デフォルトフォントを使用します（日本語非対応）",
+                              fontConfig.path);
+            } else {
+                Logger::info("ImGuiManager: 日本語フォントを読み込みました: {}", fontConfig.path);
+            }
         }
     }
 
