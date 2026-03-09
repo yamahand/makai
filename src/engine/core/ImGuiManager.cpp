@@ -3,8 +3,10 @@
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_sdlrenderer3.h>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <system_error>
 #include "Config.hpp"
 
@@ -28,9 +30,9 @@ ImGuiManager::ImGuiManager(SDL_Window* window, SDL_Renderer* renderer, const Fon
                      fontConfig.size);
     } else {
         // Windows 環境で日本語パスを正しく扱うため、UTF-8 文字列として filesystem::path を構築する
-        const std::filesystem::path fontPath(
-            reinterpret_cast<const char8_t*>(fontConfig.path.c_str())
-        );
+        // reinterpret_cast を避け、std::u8string 経由で安全に変換する
+        const std::u8string u8str(fontConfig.path.cbegin(), fontConfig.path.cend());
+        const std::filesystem::path fontPath(u8str);
         std::error_code ec;
         const bool fileExists = std::filesystem::exists(fontPath, ec);
         if (ec) {
@@ -49,9 +51,17 @@ ImGuiManager::ImGuiManager(SDL_Window* window, SDL_Renderer* renderer, const Fon
                              fontConfig.path);
             } else {
                 const auto fileSize = file.tellg();
+                // AddFontFromMemoryTTF の data_size は int のため INT_MAX、
+                // IM_ALLOC は size_t のため SIZE_MAX を上限としてチェックする
+                constexpr auto kMaxFontSize = static_cast<std::streamoff>(
+                    std::numeric_limits<int>::max()
+                );
                 if (fileSize <= 0) {
                     Logger::warn("ImGuiManager: フォントファイルのサイズが不正です: {} デフォルトフォントを使用します（日本語非対応）",
                                  fontConfig.path);
+                } else if (fileSize > kMaxFontSize) {
+                    Logger::warn("ImGuiManager: フォントファイルのサイズが大きすぎます（{} bytes）: {} デフォルトフォントを使用します（日本語非対応）",
+                                 static_cast<std::intmax_t>(fileSize), fontConfig.path);
                 } else {
                     file.seekg(0, std::ios::beg);
                     // ImGui がアトラスのビルド後に解放するバッファを IM_ALLOC で確保する
