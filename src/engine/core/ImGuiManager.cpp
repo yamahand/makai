@@ -25,8 +25,12 @@ ImGuiManager::ImGuiManager(SDL_Window* window, SDL_Renderer* renderer, const Fon
         Logger::warn("ImGuiManager: フォントサイズが不正です（{}）、デフォルトフォントを使用します（日本語非対応）",
                      fontConfig.size);
     } else {
+        // Windows 環境で日本語パスを正しく扱うため、UTF-8 文字列として filesystem::path を構築する
+        const std::filesystem::path fontPath(
+            reinterpret_cast<const char8_t*>(fontConfig.path.c_str())
+        );
         std::error_code ec;
-        const bool fileExists = std::filesystem::exists(fontConfig.path, ec);
+        const bool fileExists = std::filesystem::exists(fontPath, ec);
         if (ec) {
             Logger::warn("ImGuiManager: フォントファイルの確認中にエラーが発生しました: {} ({}) デフォルトフォントを使用します（日本語非対応）",
                          fontConfig.path, ec.message());
