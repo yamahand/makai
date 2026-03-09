@@ -91,11 +91,11 @@ FetchContent_Declare(
     GIT_TAG        1.0.2
 )
 
-# spdlog
+# spdlog (v1.15.3 の不変コミット SHA にピン留め — サプライチェーン攻撃対策)
 FetchContent_Declare(
     spdlog
     GIT_REPOSITORY https://github.com/gabime/spdlog.git
-    GIT_TAG        v1.15.3
+    GIT_TAG        6fa36017cfd5731d617e1a934f0e5ea9c4445b13
 )
 
 # GLM options: disable library build (header-only mode)
