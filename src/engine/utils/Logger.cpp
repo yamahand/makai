@@ -5,6 +5,8 @@
 #include <iostream>
 #include <array>
 #include <memory>
+#include <string>
+#include <string_view>
 #include <vector>
 
 namespace mk {
@@ -30,13 +32,19 @@ void BootstrapLogger::error(std::string_view msg) {
 // ---------------------------------------------------------------------------
 namespace {
 
-// カテゴリ数
-constexpr std::size_t kCategoryCount = 5;
-
 // カテゴリ名（LogCategory の順序に対応）
-constexpr std::array<const char*, kCategoryCount> kCategoryNames = {
+// ※ kCategoryCount は kCategoryNames のサイズから導出することで
+//   LogCategory への要素追加時の不整合を防ぐ
+constexpr std::array<const char*, 5> kCategoryNames = {
     "Core", "Renderer", "Physics", "Audio", "Game"
 };
+
+// カテゴリ数（配列サイズから自動取得）
+constexpr std::size_t kCategoryCount = kCategoryNames.size();
+
+// LogCategory の要素数と一致していることをコンパイル時に保証
+static_assert(kCategoryCount == static_cast<std::size_t>(LogCategory::Game) + 1,
+    "kCategoryNames と LogCategory の要素数が一致しません");
 
 // カテゴリロガーを保持する配列（spdlog::get() を毎回呼ばない）
 std::array<std::shared_ptr<spdlog::logger>, kCategoryCount> s_loggers;
