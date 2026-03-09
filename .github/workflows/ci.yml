@@ -37,14 +37,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build/_deps
-          key: fetchcontent-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          key: fetchcontent-${{ runner.os }}-${{ matrix.build_type }}-${{ hashFiles('CMakeLists.txt') }}
           restore-keys: |
-            fetchcontent-${{ runner.os }}-
+            fetchcontent-${{ runner.os }}-${{ matrix.build_type }}-
 
       # CMake 設定
-      # -A x64: 64bit ターゲットを明示（CMakeLists.txt の 32bit FATAL_ERROR 回避）
+      # -G / -T で Visual Studio 2022 (v143) を明示し、-A x64 で 64bit ターゲットを指定
       - name: CMake 設定
-        run: cmake -S . -B build -A x64
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -T v143 -A x64
 
       # ビルド
       # --config でビルド構成を指定（MSVC はマルチ構成ジェネレーターのため必須）
