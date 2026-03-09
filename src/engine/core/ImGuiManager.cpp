@@ -24,9 +24,9 @@ ImGuiManager::ImGuiManager(SDL_Window* window, SDL_Renderer* renderer, const Fon
 
     // 日本語フォントを登録（パスが空・ファイル未存在・サイズ不正の場合はデフォルトフォントにフォールバック）
     if (fontConfig.path.empty()) {
-        Logger::warn("ImGuiManager: フォントパスが空のため、デフォルトフォントを使用します（日本語非対応）");
+        CORE_WARN("ImGuiManager: フォントパスが空のため、デフォルトフォントを使用します（日本語非対応）");
     } else if (fontConfig.size <= 0) {
-        Logger::warn("ImGuiManager: フォントサイズが不正です（{}）、デフォルトフォントを使用します（日本語非対応）",
+        CORE_WARN("ImGuiManager: フォントサイズが不正です（{}）、デフォルトフォントを使用します（日本語非対応）",
                      fontConfig.size);
     } else {
         // Windows 環境で日本語パスを正しく扱うため、UTF-8 文字列として filesystem::path を構築する
@@ -36,10 +36,10 @@ ImGuiManager::ImGuiManager(SDL_Window* window, SDL_Renderer* renderer, const Fon
         std::error_code ec;
         const bool fileExists = std::filesystem::exists(fontPath, ec);
         if (ec) {
-            Logger::warn("ImGuiManager: フォントファイルの確認中にエラーが発生しました: {} ({}) デフォルトフォントを使用します（日本語非対応）",
+            CORE_WARN("ImGuiManager: フォントファイルの確認中にエラーが発生しました: {} ({}) デフォルトフォントを使用します（日本語非対応）",
                          fontConfig.path, ec.message());
         } else if (!fileExists) {
-            Logger::warn("ImGuiManager: フォントファイルが見つかりません: {} デフォルトフォントを使用します（日本語非対応）",
+            CORE_WARN("ImGuiManager: フォントファイルが見つかりません: {} デフォルトフォントを使用します（日本語非対応）",
                          fontConfig.path);
         } else {
             // Windows で日本語パスを含むフォントファイルを開くため、
@@ -47,7 +47,7 @@ ImGuiManager::ImGuiManager(SDL_Window* window, SDL_Renderer* renderer, const Fon
             // filesystem::path 経由でファイルを読み込んで AddFontFromMemoryTTF に渡す
             std::ifstream file(fontPath, std::ios::binary | std::ios::ate);
             if (!file) {
-                Logger::warn("ImGuiManager: フォントファイルを開けませんでした: {} デフォルトフォントを使用します（日本語非対応）",
+                CORE_WARN("ImGuiManager: フォントファイルを開けませんでした: {} デフォルトフォントを使用します（日本語非対応）",
                              fontConfig.path);
             } else {
                 const auto fileSize = file.tellg();
@@ -57,21 +57,21 @@ ImGuiManager::ImGuiManager(SDL_Window* window, SDL_Renderer* renderer, const Fon
                     std::numeric_limits<int>::max()
                 );
                 if (fileSize <= 0) {
-                    Logger::warn("ImGuiManager: フォントファイルのサイズが不正です: {} デフォルトフォントを使用します（日本語非対応）",
+                    CORE_WARN("ImGuiManager: フォントファイルのサイズが不正です: {} デフォルトフォントを使用します（日本語非対応）",
                                  fontConfig.path);
                 } else if (fileSize > kMaxFontSize) {
-                    Logger::warn("ImGuiManager: フォントファイルのサイズが大きすぎます（{} bytes）: {} デフォルトフォントを使用します（日本語非対応）",
+                    CORE_WARN("ImGuiManager: フォントファイルのサイズが大きすぎます（{} bytes）: {} デフォルトフォントを使用します（日本語非対応）",
                                  static_cast<std::intmax_t>(fileSize), fontConfig.path);
                 } else {
                     file.seekg(0, std::ios::beg);
                     // ImGui がアトラスのビルド後に解放するバッファを IM_ALLOC で確保する
                     void* fontData = IM_ALLOC(static_cast<size_t>(fileSize));
                     if (fontData == nullptr) {
-                        Logger::warn("ImGuiManager: フォントデータ用メモリの確保に失敗しました: {} デフォルトフォントを使用します（日本語非対応）",
+                        CORE_WARN("ImGuiManager: フォントデータ用メモリの確保に失敗しました: {} デフォルトフォントを使用します（日本語非対応）",
                                      fontConfig.path);
                     } else if (!file.read(static_cast<char*>(fontData), fileSize)) {
                         IM_FREE(fontData);
-                        Logger::warn("ImGuiManager: フォントファイルの読み込みに失敗しました: {} デフォルトフォントを使用します（日本語非対応）",
+                        CORE_WARN("ImGuiManager: フォントファイルの読み込みに失敗しました: {} デフォルトフォントを使用します（日本語非対応）",
                                      fontConfig.path);
                     } else {
                         ImFont* font = io.Fonts->AddFontFromMemoryTTF(
@@ -83,10 +83,10 @@ ImGuiManager::ImGuiManager(SDL_Window* window, SDL_Renderer* renderer, const Fon
                         );
                         if (font == nullptr) {
                             IM_FREE(fontData);
-                            Logger::warn("ImGuiManager: フォントの登録に失敗しました: {} デフォルトフォントを使用します（日本語非対応）",
+                            CORE_WARN("ImGuiManager: フォントの登録に失敗しました: {} デフォルトフォントを使用します（日本語非対応）",
                                          fontConfig.path);
                         } else {
-                            Logger::info("ImGuiManager: 日本語フォントを読み込みました: {}", fontConfig.path);
+                            CORE_INFO("ImGuiManager: 日本語フォントを読み込みました: {}", fontConfig.path);
                         }
                     }
                 }

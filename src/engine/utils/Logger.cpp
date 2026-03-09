@@ -2,15 +2,55 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#include <iostream>
+#include <array>
 #include <memory>
+#include <string>
+#include <string_view>
 #include <vector>
 
 namespace mk {
 
+// ---------------------------------------------------------------------------
+// BootstrapLogger — stderr に直接書き込む簡易ロガー
+// ---------------------------------------------------------------------------
+void BootstrapLogger::trace(std::string_view msg) {
+    std::cerr << "[BOOT] [trace] " << msg << '\n';
+}
+void BootstrapLogger::info(std::string_view msg) {
+    std::cerr << "[BOOT] [info]  " << msg << '\n';
+}
+void BootstrapLogger::warn(std::string_view msg) {
+    std::cerr << "[BOOT] [warn]  " << msg << '\n';
+}
+void BootstrapLogger::error(std::string_view msg) {
+    std::cerr << "[BOOT] [error] " << msg << '\n';
+}
+
+// ---------------------------------------------------------------------------
+// カテゴリロガーの内部ストレージ（spdlog をヘッダーに露出させない）
+// ---------------------------------------------------------------------------
 namespace {
 
+// カテゴリ名（LogCategory の順序に対応）
+// ※ kCategoryCount は kCategoryNames のサイズから導出することで
+//   LogCategory への要素追加時の不整合を防ぐ
+constexpr std::array<const char*, 5> kCategoryNames = {
+    "Core", "Renderer", "Physics", "Audio", "Game"
+};
+
+// カテゴリ数（配列サイズから自動取得）
+constexpr std::size_t kCategoryCount = kCategoryNames.size();
+
+// LogCategory の要素数と一致していることをコンパイル時に保証
+static_assert(kCategoryCount == static_cast<std::size_t>(LogCategory::Game) + 1,
+    "kCategoryNames と LogCategory の要素数が一致しません");
+
+// カテゴリロガーを保持する配列（spdlog::get() を毎回呼ばない）
+std::array<std::shared_ptr<spdlog::logger>, kCategoryCount> s_loggers;
+
 // 初期化済みフラグ
-bool m_initialized = false;
+bool s_initialized = false;
 
 // spdlog レベルへの変換
 spdlog::level::level_enum toSpdlogLevel(LogLevel level) {
@@ -27,48 +67,110 @@ spdlog::level::level_enum toSpdlogLevel(LogLevel level) {
     return spdlog::level::info; // 到達不能だが MSVC の警告抑制のため残す
 }
 
+// カテゴリロガーを 1 つ生成するヘルパー
+std::shared_ptr<spdlog::logger> createCategoryLogger(
+    const std::string& name,
+    const std::vector<spdlog::sink_ptr>& sinks)
+{
+    auto logger = std::make_shared<spdlog::logger>(name, sinks.begin(), sinks.end());
+    logger->set_level(spdlog::level::trace);
+    // [時刻] [カテゴリ名] [レベル] メッセージ
+    logger->set_pattern("[%H:%M:%S.%e] [%n] [%^%l%$] %v");
+    // spdlog のレジストリに登録（名前の衝突を避けるため drop してから）
+    spdlog::drop(name);
+    spdlog::register_logger(logger);
+    return logger;
+}
+
 } // anonymous namespace
 
+// ---------------------------------------------------------------------------
+// Logger::init — カテゴリロガーを生成
+// ---------------------------------------------------------------------------
 void Logger::init(std::string_view logFile) {
     // 二重初期化を防ぐ
-    if (m_initialized) return;
+    if (s_initialized) return;
 
-    // コンソールシンク（カラー付き）
+    // 共有シンク（コンソール + ファイル）
     auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     consoleSink->set_level(spdlog::level::trace);
 
-    // ファイルシンク
     auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
         std::string(logFile), /*truncate=*/true);
     fileSink->set_level(spdlog::level::trace);
 
-    // 両シンクを持つマルチシンクロガーを作成してデフォルトに設定
     std::vector<spdlog::sink_ptr> sinks{ consoleSink, fileSink };
-    auto logger = std::make_shared<spdlog::logger>(
-        "makai", sinks.begin(), sinks.end());
 
-    logger->set_level(spdlog::level::trace);
-    logger->set_pattern("[%H:%M:%S.%e] [%^%l%$] %v");
-    spdlog::set_default_logger(logger);
+    // 各カテゴリロガーを生成
+    for (std::size_t i = 0; i < kCategoryCount; ++i) {
+        s_loggers[i] = createCategoryLogger(kCategoryNames[i], sinks);
+    }
 
-    spdlog::info("Logger initialized");
-    m_initialized = true;
+    s_initialized = true;
+    s_loggers[static_cast<std::size_t>(LogCategory::Core)]->info("Logger initialized");
 }
 
+// ---------------------------------------------------------------------------
+// Logger::shutdown
+// ---------------------------------------------------------------------------
 void Logger::shutdown() {
+    if (!s_initialized) return;
+
+    // static ポインタをリセットしてから spdlog を停止
+    for (auto& logger : s_loggers) {
+        logger.reset();
+    }
+
     spdlog::shutdown();
-    m_initialized = false;
+    s_initialized = false;
 }
 
+// ---------------------------------------------------------------------------
+// Logger::setLevel — すべてのカテゴリロガーのレベルを一括変更
+// ---------------------------------------------------------------------------
 void Logger::setLevel(LogLevel level) {
-    if (!m_initialized) return;
-    spdlog::set_level(toSpdlogLevel(level));
+    if (!s_initialized) return;
+
+    auto spdLevel = toSpdlogLevel(level);
+    for (auto& logger : s_loggers) {
+        if (logger) {
+            logger->set_level(spdLevel);
+        }
+    }
 }
 
-void Logger::logImpl(LogLevel level, std::string_view msg) {
-    if (!m_initialized) return;
-    // "{}" 経由で渡すことで msg 中の {} をフォーマット文字として解釈させない
-    spdlog::log(toSpdlogLevel(level), "{}", msg);
+// ---------------------------------------------------------------------------
+// Logger::shouldLog — 指定カテゴリ・レベルが出力対象かどうかを返す
+// テンプレートの log() がフォーマット前に呼び出し、
+// 無効レベルでの std::format コストを回避するために使う
+// ---------------------------------------------------------------------------
+bool Logger::shouldLog(LogCategory category, LogLevel level) {
+    if (!s_initialized) return false;
+
+    const auto idx = static_cast<std::size_t>(category);
+    if (idx >= kCategoryCount) return false;
+
+    const auto& logger = s_loggers[idx];
+    if (!logger) return false;
+
+    return logger->should_log(toSpdlogLevel(level));
+}
+
+// ---------------------------------------------------------------------------
+// Logger::log — カテゴリ別ログ出力
+// ---------------------------------------------------------------------------
+void Logger::log(LogCategory category, LogLevel level, std::string_view msg) {
+    if (!s_initialized) return;
+
+    // 不正な enum 値による範囲外アクセスを防ぐ
+    const auto idx = static_cast<std::size_t>(category);
+    if (idx >= kCategoryCount) return;
+
+    const auto& logger = s_loggers[idx];
+    if (logger) {
+        // "{}" 経由で渡すことで msg 中の {} をフォーマット文字として解釈させない
+        logger->log(toSpdlogLevel(level), "{}", msg);
+    }
 }
 
 } // namespace mk
