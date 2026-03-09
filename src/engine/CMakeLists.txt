@@ -21,6 +21,11 @@ target_link_libraries(makai_engine PUBLIC
     glm::glm
 )
 
+# spdlog はエンジン内部の実装詳細のため PRIVATE リンク（game 側に漏れない）
+target_link_libraries(makai_engine PRIVATE
+    spdlog::spdlog
+)
+
 # MSVC: UTF-8 without BOM support for Japanese comments
 if(MSVC)
     target_compile_options(makai_engine PRIVATE /utf-8)

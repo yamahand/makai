@@ -3,13 +3,14 @@
 #include <stack>
 #include <vector>
 #include <SDL3/SDL.h>
+#include "../scenes/Scene.hpp"
 
 namespace mk {
 
-class Scene;
-
 class SceneManager {
 public:
+    ~SceneManager();
+
     // シーンをスタックに積む（前のシーンはポーズ状態で保持）
     void push(std::unique_ptr<Scene> scene);
 

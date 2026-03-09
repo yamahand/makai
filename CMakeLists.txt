@@ -91,10 +91,23 @@ FetchContent_Declare(
     GIT_TAG        1.0.2
 )
 
+# spdlog (v1.15.3 の不変コミット SHA にピン留め — サプライチェーン攻撃対策)
+FetchContent_Declare(
+    spdlog
+    GIT_REPOSITORY https://github.com/gabime/spdlog.git
+    GIT_TAG        6fa36017cfd5731d617e1a934f0e5ea9c4445b13
+)
+
 # GLM options: disable library build (header-only mode)
 set(GLM_BUILD_LIBRARY OFF CACHE BOOL "" FORCE)
 set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(imgui json glm)
+
+# spdlog options: テスト・ベンチマーク・サンプルを無効化してビルド時間を削減
+set(SPDLOG_BUILD_TESTS   OFF CACHE BOOL "" FORCE)
+set(SPDLOG_BUILD_BENCH   OFF CACHE BOOL "" FORCE)
+set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
+
+FetchContent_MakeAvailable(imgui json glm spdlog)
 
 # Create ImGui library with SDL3 backend
 add_library(imgui_sdl3 STATIC
