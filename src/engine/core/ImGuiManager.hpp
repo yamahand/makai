@@ -1,11 +1,12 @@
 #pragma once
 #include <SDL3/SDL.h>
-#include "Config.hpp"
 
 struct SDL_Window;
 struct SDL_Renderer;
 
 namespace mk {
+
+struct FontConfig;
 
 class ImGuiManager {
 public:

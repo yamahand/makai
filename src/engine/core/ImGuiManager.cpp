@@ -5,6 +5,7 @@
 #include <imgui_impl_sdlrenderer3.h>
 #include <filesystem>
 #include <system_error>
+#include "Config.hpp"
 
 namespace mk {
 
