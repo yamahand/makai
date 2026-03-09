@@ -1,0 +1,53 @@
+# makai — ビルド検証 CI
+# Windows MSVC 専用プロジェクトのため Windows ランナーのみ使用する。
+# FetchContent のキャッシュで2回目以降のビルドを高速化する。
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (Windows / MSVC / ${{ matrix.build_type }})
+    runs-on: windows-latest  # Visual Studio 2022 (v143) が含まれる
+
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
+
+    steps:
+      # ソースコードのチェックアウト
+      - name: チェックアウト
+        uses: actions/checkout@v4
+
+      # FetchContent キャッシュの復元
+      # キャッシュキーに CMakeLists.txt のハッシュを使用することで
+      # 依存バージョン変更時にキャッシュを自動無効化する
+      - name: FetchContent キャッシュの復元
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: fetchcontent-${{ runner.os }}-${{ matrix.build_type }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            fetchcontent-${{ runner.os }}-${{ matrix.build_type }}-
+
+      # CMake 設定
+      # -G / -T で Visual Studio 2022 (v143) を明示し、-A x64 で 64bit ターゲットを指定
+      - name: CMake 設定
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -T v143 -A x64
+
+      # ビルド
+      # --config でビルド構成を指定（MSVC はマルチ構成ジェネレーターのため必須）
+      # --parallel でコア数を自動検出して並列ビルド
+      - name: ビルド
+        run: cmake --build build --config ${{ matrix.build_type }} --parallel
