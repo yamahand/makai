@@ -4,6 +4,7 @@
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_sdlrenderer3.h>
 #include <filesystem>
+#include <system_error>
 
 namespace mk {
 
@@ -40,8 +41,8 @@ ImGuiManager::ImGuiManager(SDL_Window* window, SDL_Renderer* renderer, const Fon
                 io.Fonts->GetGlyphRangesJapanese()
             );
             if (font == nullptr) {
-                Logger::error("ImGuiManager: フォントの読み込みに失敗しました: {} デフォルトフォントを使用します（日本語非対応）",
-                              fontConfig.path);
+                Logger::warn("ImGuiManager: フォントの読み込みに失敗しました: {} デフォルトフォントを使用します（日本語非対応）",
+                             fontConfig.path);
             } else {
                 Logger::info("ImGuiManager: 日本語フォントを読み込みました: {}", fontConfig.path);
             }
