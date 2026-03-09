@@ -61,6 +61,7 @@ void Logger::shutdown() {
 }
 
 void Logger::setLevel(LogLevel level) {
+    if (!m_initialized) return;
     spdlog::set_level(toSpdlogLevel(level));
 }
 
