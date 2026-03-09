@@ -140,12 +140,33 @@ void Logger::setLevel(LogLevel level) {
 }
 
 // ---------------------------------------------------------------------------
+// Logger::shouldLog — 指定カテゴリ・レベルが出力対象かどうかを返す
+// テンプレートの log() がフォーマット前に呼び出し、
+// 無効レベルでの std::format コストを回避するために使う
+// ---------------------------------------------------------------------------
+bool Logger::shouldLog(LogCategory category, LogLevel level) {
+    if (!s_initialized) return false;
+
+    const auto idx = static_cast<std::size_t>(category);
+    if (idx >= kCategoryCount) return false;
+
+    const auto& logger = s_loggers[idx];
+    if (!logger) return false;
+
+    return logger->should_log(toSpdlogLevel(level));
+}
+
+// ---------------------------------------------------------------------------
 // Logger::log — カテゴリ別ログ出力
 // ---------------------------------------------------------------------------
 void Logger::log(LogCategory category, LogLevel level, std::string_view msg) {
     if (!s_initialized) return;
 
-    auto& logger = s_loggers[static_cast<std::size_t>(category)];
+    // 不正な enum 値による範囲外アクセスを防ぐ
+    const auto idx = static_cast<std::size_t>(category);
+    if (idx >= kCategoryCount) return;
+
+    const auto& logger = s_loggers[idx];
     if (logger) {
         // "{}" 経由で渡すことで msg 中の {} をフォーマット文字として解釈させない
         logger->log(toSpdlogLevel(level), "{}", msg);

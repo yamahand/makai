@@ -53,10 +53,16 @@ public:
     // カテゴリ別ログ出力（spdlog を .cpp に隠蔽）
     static void log(LogCategory category, LogLevel level, std::string_view msg);
 
+    // 指定カテゴリ・レベルが出力対象かどうかを返す
+    // テンプレート側で事前チェックし、無効レベルでの std::format コストを回避する
+    static bool shouldLog(LogCategory category, LogLevel level);
+
     // std::format スタイルの便利テンプレート
+    // shouldLog() が false の場合はフォーマット処理自体をスキップする
     template<typename... Args>
     static void log(LogCategory category, LogLevel level,
                     std::format_string<Args...> fmt, Args&&... args) {
+        if (!shouldLog(category, level)) return;
         log(category, level, std::format(fmt, std::forward<Args>(args)...));
     }
 };
