@@ -12,7 +12,7 @@ namespace makai {
 LogTestScene::LogTestScene(mk::Game& game)
     : mk::Scene(game)
 {
-    mk::Logger::info("LogTestScene に入りました");
+    GAME_INFO("LogTestScene に入りました");
 }
 
 void LogTestScene::handleEvent(const SDL_Event& event) {
@@ -66,17 +66,17 @@ void LogTestScene::render(SDL_Renderer* renderer) {
     };
 
     logButton("Trace",    ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
-        [](const std::string& m) { mk::Logger::trace("{}", m); });
+        [](const std::string& m) { GAME_TRACE("{}", m); });
     logButton("Debug",    ImVec4(0.2f, 0.6f, 0.8f, 1.0f),
-        [](const std::string& m) { mk::Logger::debug("{}", m); });
+        [](const std::string& m) { GAME_DEBUG("{}", m); });
     logButton("Info",     ImVec4(0.2f, 0.7f, 0.2f, 1.0f),
-        [](const std::string& m) { mk::Logger::info("{}", m); });
+        [](const std::string& m) { GAME_INFO("{}", m); });
     logButton("Warn",     ImVec4(0.8f, 0.6f, 0.1f, 1.0f),
-        [](const std::string& m) { mk::Logger::warn("{}", m); });
+        [](const std::string& m) { GAME_WARN("{}", m); });
     logButton("Error",    ImVec4(0.8f, 0.2f, 0.2f, 1.0f),
-        [](const std::string& m) { mk::Logger::error("{}", m); });
+        [](const std::string& m) { GAME_ERROR("{}", m); });
     logButton("Critical", ImVec4(0.9f, 0.1f, 0.4f, 1.0f),
-        [](const std::string& m) { mk::Logger::critical("{}", m); });
+        [](const std::string& m) { GAME_CRITICAL("{}", m); });
 
     ImGui::NewLine();
     ImGui::Separator();
