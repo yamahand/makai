@@ -42,7 +42,8 @@ Game::Game() {
             // ImGui を初期化
             m_imguiManager = std::make_unique<ImGuiManager>(
                 m_window->getSDLWindow(),
-                m_window->getRenderer()
+                m_window->getRenderer(),
+                m_config.defaultFont
             );
 
             // TextureManager を初期化
