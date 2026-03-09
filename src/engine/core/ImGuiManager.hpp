@@ -6,9 +6,11 @@ struct SDL_Renderer;
 
 namespace mk {
 
+struct FontConfig;
+
 class ImGuiManager {
 public:
-    ImGuiManager(SDL_Window* window, SDL_Renderer* renderer);
+    ImGuiManager(SDL_Window* window, SDL_Renderer* renderer, const FontConfig& fontConfig);
     ~ImGuiManager();
 
     // 新しい ImGui フレームを開始する
