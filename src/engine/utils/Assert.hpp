@@ -26,11 +26,10 @@ inline void debugBreak() {
 [[noreturn]] inline void fail(LogCategory category, const char* expr, const char* file, int line, std::string_view msg) {
     auto full = std::format("Assertion failed: {} at {}:{}{}", expr, file, line,
                             msg.empty() ? std::string() : std::format(": {}", msg));
-    if (Logger::shouldLog(category, LogLevel::Error)) {
-        Logger::log(category, LogLevel::Error, full);
-    } else {
-        BootstrapLogger::error(full);
-    }
+    // アサートはログレベル設定に関係なく必ずカテゴリロガーへ出力する
+    Logger::log(category, LogLevel::Error, full);
+    // spdlog 初期化前のケースでもログが残るよう、ブートストラップ側にも出力しておく
+    BootstrapLogger::error(full);
     debugBreak();
     std::abort();
 }
