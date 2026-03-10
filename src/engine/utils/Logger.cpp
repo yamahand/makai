@@ -25,7 +25,13 @@ void outputToDebugger(std::string_view prefix, std::string_view msg) {
 #ifdef _WIN32
     if (::IsDebuggerPresent()) {
         auto line = std::string(prefix) + std::string(msg) + "\n";
-        ::OutputDebugStringA(line.c_str());
+        // UTF-8 → UTF-16 変換して OutputDebugStringW に渡す
+        const int wlen = ::MultiByteToWideChar(CP_UTF8, 0, line.c_str(), -1, nullptr, 0);
+        if (wlen > 0) {
+            std::wstring wline(static_cast<std::size_t>(wlen), L'\0');
+            ::MultiByteToWideChar(CP_UTF8, 0, line.c_str(), -1, wline.data(), wlen);
+            ::OutputDebugStringW(wline.c_str());
+        }
     }
 #else
     (void)prefix; (void)msg;
@@ -113,6 +119,13 @@ std::shared_ptr<spdlog::logger> createCategoryLogger(
 void Logger::init(std::string_view logFile) {
     // 二重初期化を防ぐ
     if (s_initialized) return;
+
+#ifdef _WIN32
+    // コンソールの入出力コードページを UTF-8 に設定する。
+    // デフォルトは CP932(Shift-JIS) 等のため、UTF-8 文字列をそのまま流すと文字化けが発生する。
+    ::SetConsoleOutputCP(CP_UTF8);
+    ::SetConsoleCP(CP_UTF8);
+#endif
 
     // 共有シンク（コンソール + ファイル）
     auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();

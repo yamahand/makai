@@ -1,7 +1,7 @@
 #pragma once
 // Visual Studio の「出力」ウィンドウへ spdlog のログを転送するカスタムシンク。
-// OutputDebugStringA を使用するため Windows 専用。
-// 非 Windows 環境ではこのヘッダーをインクルードしないこと。
+// UTF-8 文字列を UTF-16 に変換して OutputDebugStringW に渡すため日本語も正しく表示される。
+// Windows 専用。非 Windows 環境ではこのヘッダーをインクルードしないこと。
 #ifdef _WIN32
 
 #include <spdlog/sinks/base_sink.h>
@@ -21,13 +21,19 @@ protected:
         // base_sink が保持する formatter_ でフォーマット済み文字列を生成する
         spdlog::memory_buf_t buf;
         spdlog::sinks::base_sink<Mutex>::formatter_->format(msg, buf);
-        // null 終端文字列として OutputDebugStringA に渡す
         buf.push_back('\0');
-        ::OutputDebugStringA(buf.data());
+        // UTF-8 → UTF-16 変換して OutputDebugStringW に渡す
+        // OutputDebugStringA は ANSI 文字列を期待するため日本語が文字化けする
+        const int wlen = ::MultiByteToWideChar(CP_UTF8, 0, buf.data(), -1, nullptr, 0);
+        if (wlen > 0) {
+            std::wstring wbuf(static_cast<std::size_t>(wlen), L'\0');
+            ::MultiByteToWideChar(CP_UTF8, 0, buf.data(), -1, wbuf.data(), wlen);
+            ::OutputDebugStringW(wbuf.c_str());
+        }
     }
 
     void flush_() override {
-        // OutputDebugStringA は即時出力のため flush 処理は不要
+        // OutputDebugStringW は即時出力のため flush 処理は不要
     }
 };
 
