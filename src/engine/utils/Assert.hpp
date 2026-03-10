@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <csignal>
 #include <string>
+#include <string_view>
+#include <utility>
 #include <format>
 #include "Logger.hpp"
 
@@ -55,42 +57,42 @@ template<typename... Args>
     ((expr) ? (void)0 : ::mk::assert_impl::fail(::mk::LogCategory::Core, #expr, __FILE__, __LINE__, std::string_view{}))
 
 #define MK_ASSERT_MSG(expr, fmt, ...) \
-    ((expr) ? (void)0 : ::mk::assert_impl::failf(::mk::LogCategory::Core, #expr, __FILE__, __LINE__, (fmt), ##__VA_ARGS__))
+    ((expr) ? (void)0 : ::mk::assert_impl::failf(::mk::LogCategory::Core, #expr, __FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__))
 
 // --- Core ---
 #define CORE_ASSERT(expr) \
     ((expr) ? (void)0 : ::mk::assert_impl::fail(::mk::LogCategory::Core, #expr, __FILE__, __LINE__, std::string_view{}))
 
 #define CORE_ASSERT_MSG(expr, fmt, ...) \
-    ((expr) ? (void)0 : ::mk::assert_impl::failf(::mk::LogCategory::Core, #expr, __FILE__, __LINE__, (fmt), ##__VA_ARGS__))
+    ((expr) ? (void)0 : ::mk::assert_impl::failf(::mk::LogCategory::Core, #expr, __FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__))
 
 // --- Renderer ---
 #define RENDERER_ASSERT(expr) \
     ((expr) ? (void)0 : ::mk::assert_impl::fail(::mk::LogCategory::Renderer, #expr, __FILE__, __LINE__, std::string_view{}))
 
 #define RENDERER_ASSERT_MSG(expr, fmt, ...) \
-    ((expr) ? (void)0 : ::mk::assert_impl::failf(::mk::LogCategory::Renderer, #expr, __FILE__, __LINE__, (fmt), ##__VA_ARGS__))
+    ((expr) ? (void)0 : ::mk::assert_impl::failf(::mk::LogCategory::Renderer, #expr, __FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__))
 
 // --- Physics ---
 #define PHYSICS_ASSERT(expr) \
     ((expr) ? (void)0 : ::mk::assert_impl::fail(::mk::LogCategory::Physics, #expr, __FILE__, __LINE__, std::string_view{}))
 
 #define PHYSICS_ASSERT_MSG(expr, fmt, ...) \
-    ((expr) ? (void)0 : ::mk::assert_impl::failf(::mk::LogCategory::Physics, #expr, __FILE__, __LINE__, (fmt), ##__VA_ARGS__))
+    ((expr) ? (void)0 : ::mk::assert_impl::failf(::mk::LogCategory::Physics, #expr, __FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__))
 
 // --- Audio ---
 #define AUDIO_ASSERT(expr) \
     ((expr) ? (void)0 : ::mk::assert_impl::fail(::mk::LogCategory::Audio, #expr, __FILE__, __LINE__, std::string_view{}))
 
 #define AUDIO_ASSERT_MSG(expr, fmt, ...) \
-    ((expr) ? (void)0 : ::mk::assert_impl::failf(::mk::LogCategory::Audio, #expr, __FILE__, __LINE__, (fmt), ##__VA_ARGS__))
+    ((expr) ? (void)0 : ::mk::assert_impl::failf(::mk::LogCategory::Audio, #expr, __FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__))
 
 // --- Game ---
 #define GAME_ASSERT(expr) \
     ((expr) ? (void)0 : ::mk::assert_impl::fail(::mk::LogCategory::Game, #expr, __FILE__, __LINE__, std::string_view{}))
 
 #define GAME_ASSERT_MSG(expr, fmt, ...) \
-    ((expr) ? (void)0 : ::mk::assert_impl::failf(::mk::LogCategory::Game, #expr, __FILE__, __LINE__, (fmt), ##__VA_ARGS__))
+    ((expr) ? (void)0 : ::mk::assert_impl::failf(::mk::LogCategory::Game, #expr, __FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__))
 
 #else
 
