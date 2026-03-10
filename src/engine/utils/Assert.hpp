@@ -7,6 +7,9 @@
 #include <utility>
 #include <format>
 #include "Logger.hpp"
+#ifdef _MSC_VER
+#  include <intrin.h>
+#endif
 
 namespace mk {
 namespace assert_impl {
@@ -38,7 +41,15 @@ inline void debugBreak() {
 template<typename... Args>
 [[noreturn]] inline void failf(LogCategory category, const char* expr, const char* file, int line,
                                std::format_string<Args...> fmt, Args&&... args) {
-    auto msg = std::format(fmt, std::forward<Args>(args)...);
+    // フォーマット失敗時も debugBreak()→abort() に確実に到達させるため try/catch で保護
+    std::string msg;
+    try {
+        msg = std::format(fmt, std::forward<Args>(args)...);
+    } catch (const std::format_error& e) {
+        msg = std::string("(フォーマットエラー: ") + e.what() + ")";
+    } catch (...) {
+        msg = "(不明なフォーマットエラー)";
+    }
     fail(category, expr, file, line, msg);
 }
 
