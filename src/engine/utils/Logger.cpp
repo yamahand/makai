@@ -8,23 +8,46 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#ifdef _WIN32
+#  include <Windows.h>
+#  include "msvc_sink.hpp"
+#endif
 
 namespace mk {
 
 // ---------------------------------------------------------------------------
 // BootstrapLogger — stderr に直接書き込む簡易ロガー
+// Visual Studio デバッガー起動中は OutputDebugStringA にも出力する
 // ---------------------------------------------------------------------------
+namespace {
+// デバッガー向け出力（Windows 以外では何もしない）
+void outputToDebugger(std::string_view prefix, std::string_view msg) {
+#ifdef _WIN32
+    if (::IsDebuggerPresent()) {
+        auto line = std::string(prefix) + std::string(msg) + "\n";
+        ::OutputDebugStringA(line.c_str());
+    }
+#else
+    (void)prefix; (void)msg;
+#endif
+}
+} // anonymous namespace
+
 void BootstrapLogger::trace(std::string_view msg) {
     std::cerr << "[BOOT] [trace] " << msg << '\n';
+    outputToDebugger("[BOOT] [trace] ", msg);
 }
 void BootstrapLogger::info(std::string_view msg) {
     std::cerr << "[BOOT] [info]  " << msg << '\n';
+    outputToDebugger("[BOOT] [info]  ", msg);
 }
 void BootstrapLogger::warn(std::string_view msg) {
     std::cerr << "[BOOT] [warn]  " << msg << '\n';
+    outputToDebugger("[BOOT] [warn]  ", msg);
 }
 void BootstrapLogger::error(std::string_view msg) {
     std::cerr << "[BOOT] [error] " << msg << '\n';
+    outputToDebugger("[BOOT] [error] ", msg);
 }
 
 // ---------------------------------------------------------------------------
@@ -100,6 +123,15 @@ void Logger::init(std::string_view logFile) {
     fileSink->set_level(spdlog::level::trace);
 
     std::vector<spdlog::sink_ptr> sinks{ consoleSink, fileSink };
+
+#ifdef _WIN32
+    // Visual Studio デバッガー起動中のみ出力ウィンドウへのシンクを追加する
+    if (::IsDebuggerPresent()) {
+        auto msvcSink = std::make_shared<mk::msvc_sink_mt>();
+        msvcSink->set_level(spdlog::level::trace);
+        sinks.push_back(msvcSink);
+    }
+#endif
 
     // 各カテゴリロガーを生成
     for (std::size_t i = 0; i < kCategoryCount; ++i) {
