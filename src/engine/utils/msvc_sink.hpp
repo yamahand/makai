@@ -18,17 +18,20 @@ template<typename Mutex>
 class msvc_sink final : public spdlog::sinks::base_sink<Mutex> {
 protected:
     void sink_it_(const spdlog::details::log_msg& msg) override {
-        // base_sink が保持する formatter_ でフォーマット済み文字列を生成する
-        spdlog::memory_buf_t buf;
-        spdlog::sinks::base_sink<Mutex>::formatter_->format(msg, buf);
-        buf.push_back('\0');
-        // UTF-8 → UTF-16 変換して OutputDebugStringW に渡す
-        // OutputDebugStringA は ANSI 文字列を期待するため日本語が文字化けする
-        const int wlen = ::MultiByteToWideChar(CP_UTF8, 0, buf.data(), -1, nullptr, 0);
-        if (wlen > 0) {
-            std::wstring wbuf(static_cast<std::size_t>(wlen), L'\0');
-            ::MultiByteToWideChar(CP_UTF8, 0, buf.data(), -1, wbuf.data(), wlen);
-            ::OutputDebugStringW(wbuf.c_str());
+        // デバッガーの接続時だけ出力する
+        if (::IsDebuggerPresent()) {
+            // base_sink が保持する formatter_ でフォーマット済み文字列を生成する
+            spdlog::memory_buf_t buf;
+            spdlog::sinks::base_sink<Mutex>::formatter_->format(msg, buf);
+            buf.push_back('\0');
+            // UTF-8 → UTF-16 変換して OutputDebugStringW に渡す
+            // OutputDebugStringA は ANSI 文字列を期待するため日本語が文字化けする
+            const int wlen = ::MultiByteToWideChar(CP_UTF8, 0, buf.data(), -1, nullptr, 0);
+            if (wlen > 0) {
+                std::wstring wbuf(static_cast<std::size_t>(wlen), L'\0');
+                ::MultiByteToWideChar(CP_UTF8, 0, buf.data(), -1, wbuf.data(), wlen);
+                ::OutputDebugStringW(wbuf.c_str());
+            }
         }
     }
 
@@ -39,7 +42,7 @@ protected:
 
 // 利便性のためエイリアスを提供
 using msvc_sink_mt = msvc_sink<std::mutex>;
-using msvc_sink_st = msvc_sink<spdlog::details::null_mutex>;
+//using msvc_sink_st = msvc_sink<spdlog::details::null_mutex>;
 
 } // namespace mk
 

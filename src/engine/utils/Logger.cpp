@@ -17,7 +17,7 @@ namespace mk {
 
 // ---------------------------------------------------------------------------
 // BootstrapLogger — stderr に直接書き込む簡易ロガー
-// Visual Studio デバッガー起動中は OutputDebugStringA にも出力する
+// Visual Studio デバッガー起動中は OutputDebugStringW にも出力する
 // ---------------------------------------------------------------------------
 namespace {
 // デバッガー向け出力（Windows 以外では何もしない）
@@ -138,12 +138,10 @@ void Logger::init(std::string_view logFile) {
     std::vector<spdlog::sink_ptr> sinks{ consoleSink, fileSink };
 
 #ifdef _WIN32
-    // Visual Studio デバッガー起動中のみ出力ウィンドウへのシンクを追加する
-    if (::IsDebuggerPresent()) {
-        auto msvcSink = std::make_shared<mk::msvc_sink_mt>();
-        msvcSink->set_level(spdlog::level::trace);
-        sinks.push_back(msvcSink);
-    }
+    // windowsのときはVisual Studio用のシンクを追加する
+    auto msvcSink = std::make_shared<mk::msvc_sink_mt>();
+    msvcSink->set_level(spdlog::level::trace);
+    sinks.push_back(msvcSink);
 #endif
 
     // 各カテゴリロガーを生成
