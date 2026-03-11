@@ -5,7 +5,6 @@
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/error/en.h>
 #include <fstream>
-#include <iostream>
 #include <SDL3/SDL_log.h>
 
 namespace mk {
@@ -31,6 +30,14 @@ Config Config::load(const std::string& path) {
                         path.c_str(),
                         doc.GetErrorOffset(),
                         rapidjson::GetParseError_En(doc.GetParseError()));
+            return config;
+        }
+
+        // ルートがオブジェクトであることを確認する
+        if (!doc.IsObject()) {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                        "Invalid config root in '%s': JSON root must be an object, using default configuration",
+                        path.c_str());
             return config;
         }
 
@@ -117,7 +124,7 @@ void Config::save(const std::string& path) const {
 
         // ウィンドウ設定
         rapidjson::Value windowObj(rapidjson::kObjectType);
-        windowObj.AddMember("title", rapidjson::Value(window.title.c_str(), alloc), alloc);
+        windowObj.AddMember("title", rapidjson::Value(window.title.data(), static_cast<rapidjson::SizeType>(window.title.size()), alloc), alloc);
         windowObj.AddMember("width", window.width, alloc);
         windowObj.AddMember("height", window.height, alloc);
         windowObj.AddMember("fullscreen", window.fullscreen, alloc);
@@ -128,13 +135,13 @@ void Config::save(const std::string& path) const {
         rapidjson::Value fontsObj(rapidjson::kObjectType);
         {
             rapidjson::Value defObj(rapidjson::kObjectType);
-            defObj.AddMember("path", rapidjson::Value(defaultFont.path.c_str(), alloc), alloc);
+            defObj.AddMember("path", rapidjson::Value(defaultFont.path.data(), static_cast<rapidjson::SizeType>(defaultFont.path.size()), alloc), alloc);
             defObj.AddMember("size", defaultFont.size, alloc);
             fontsObj.AddMember("default", defObj, alloc);
         }
         {
             rapidjson::Value lgObj(rapidjson::kObjectType);
-            lgObj.AddMember("path", rapidjson::Value(largeFont.path.c_str(), alloc), alloc);
+            lgObj.AddMember("path", rapidjson::Value(largeFont.path.data(), static_cast<rapidjson::SizeType>(largeFont.path.size()), alloc), alloc);
             lgObj.AddMember("size", largeFont.size, alloc);
             fontsObj.AddMember("large", lgObj, alloc);
         }
@@ -171,7 +178,18 @@ void Config::save(const std::string& path) const {
         doc.Accept(writer);
 
         std::ofstream file(path);
+        if (!file.is_open()) {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                        "Failed to open config file for writing: %s", path.c_str());
+            return;
+        }
         file << buffer.GetString();
+        file.close();
+        if (file.fail()) {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                        "Failed to write config to: %s", path.c_str());
+            return;
+        }
 
         SDL_Log("Config saved to %s", path.c_str());
     }
