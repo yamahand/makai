@@ -137,30 +137,40 @@ void Logger::init(std::string_view logFile) {
     ::SetConsoleCP(CP_UTF8);
 #endif
 
-    // 共有シンク（コンソール + ファイル）
-    auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-    consoleSink->set_level(spdlog::level::trace);
+    // コードページ切り替え後に例外が発生した場合は catch で復元する
+    try {
+        // 共有シンク（コンソール + ファイル）
+        auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+        consoleSink->set_level(spdlog::level::trace);
 
-    auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
-        std::string(logFile), /*truncate=*/true);
-    fileSink->set_level(spdlog::level::trace);
+        auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
+            std::string(logFile), /*truncate=*/true);
+        fileSink->set_level(spdlog::level::trace);
 
-    std::vector<spdlog::sink_ptr> sinks{ consoleSink, fileSink };
+        std::vector<spdlog::sink_ptr> sinks{ consoleSink, fileSink };
 
 #ifdef _WIN32
-    // windowsのときはVisual Studio用のシンクを追加する
-    auto msvcSink = std::make_shared<mk::msvc_sink_mt>();
-    msvcSink->set_level(spdlog::level::trace);
-    sinks.push_back(msvcSink);
+        // windowsのときはVisual Studio用のシンクを追加する
+        auto msvcSink = std::make_shared<mk::msvc_sink_mt>();
+        msvcSink->set_level(spdlog::level::trace);
+        sinks.push_back(msvcSink);
 #endif
 
-    // 各カテゴリロガーを生成
-    for (std::size_t i = 0; i < kCategoryCount; ++i) {
-        s_loggers[i] = createCategoryLogger(kCategoryNames[i], sinks);
-    }
+        // 各カテゴリロガーを生成
+        for (std::size_t i = 0; i < kCategoryCount; ++i) {
+            s_loggers[i] = createCategoryLogger(kCategoryNames[i], sinks);
+        }
 
-    s_initialized = true;
-    s_loggers[static_cast<std::size_t>(LogCategory::Core)]->info("Logger initialized");
+        s_initialized = true;
+        s_loggers[static_cast<std::size_t>(LogCategory::Core)]->info("Logger initialized");
+    } catch (...) {
+#ifdef _WIN32
+        // 初期化失敗時はコードページを元の値に戻してから再スロー
+        ::SetConsoleOutputCP(s_prevOutputCP);
+        ::SetConsoleCP(s_prevInputCP);
+#endif
+        throw;
+    }
 }
 
 // ---------------------------------------------------------------------------
