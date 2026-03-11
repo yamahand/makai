@@ -17,8 +17,12 @@ target_link_libraries(makai_engine PUBLIC
     SDL3_ttf::SDL3_ttf
     SDL3_image::SDL3_image
     imgui_sdl3
-    nlohmann_json::nlohmann_json
     glm::glm
+)
+
+# RapidJSON は header-only のため include ディレクトリのみ追加
+target_include_directories(makai_engine PUBLIC
+    ${rapidjson_SOURCE_DIR}/include
 )
 
 # spdlog はエンジン内部の実装詳細のため PRIVATE リンク（game 側に漏れない）
