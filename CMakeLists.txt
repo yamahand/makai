@@ -77,11 +77,11 @@ FetchContent_Declare(
     GIT_TAG        v1.92.6
 )
 
-# nlohmann/json (header-only)
+# RapidJSON (header-only) — v1.1.0 の不変コミット SHA にピン留め（サプライチェーン攻撃対策）
 FetchContent_Declare(
-    json
-    GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG        v3.11.3
+    rapidjson
+    GIT_REPOSITORY https://github.com/Tencent/rapidjson.git
+    GIT_TAG        f54b0e47a08782a6131cc3d60f94d038fa6e0a51
 )
 
 # GLM (OpenGL Mathematics) - header-only
@@ -107,7 +107,20 @@ set(SPDLOG_BUILD_TESTS   OFF CACHE BOOL "" FORCE)
 set(SPDLOG_BUILD_BENCH   OFF CACHE BOOL "" FORCE)
 set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
 
-FetchContent_MakeAvailable(imgui json glm spdlog)
+# RapidJSON は header-only のため、ソースのダウンロードのみ行い CMake ビルドは実行しない
+if(POLICY CMP0169)
+    cmake_policy(PUSH)
+    cmake_policy(SET CMP0169 OLD)
+endif()
+FetchContent_GetProperties(rapidjson)
+if(NOT rapidjson_POPULATED)
+    FetchContent_Populate(rapidjson)
+endif()
+if(POLICY CMP0169)
+    cmake_policy(POP)
+endif()
+
+FetchContent_MakeAvailable(imgui glm spdlog)
 
 # Create ImGui library with SDL3 backend
 add_library(imgui_sdl3 STATIC
