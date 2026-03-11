@@ -8,23 +8,52 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#ifdef _WIN32
+#  include <Windows.h>
+#  include "msvc_sink.hpp"
+#endif
 
 namespace mk {
 
 // ---------------------------------------------------------------------------
 // BootstrapLogger — stderr に直接書き込む簡易ロガー
+// Visual Studio デバッガー起動中は OutputDebugStringW にも出力する
 // ---------------------------------------------------------------------------
+namespace {
+// デバッガー向け出力（Windows 以外では何もしない）
+void outputToDebugger(std::string_view prefix, std::string_view msg) {
+#ifdef _WIN32
+    if (::IsDebuggerPresent()) {
+        auto line = std::string(prefix) + std::string(msg) + "\n";
+        // UTF-8 → UTF-16 変換して OutputDebugStringW に渡す
+        const int wlen = ::MultiByteToWideChar(CP_UTF8, 0, line.c_str(), -1, nullptr, 0);
+        if (wlen > 0) {
+            std::wstring wline(static_cast<std::size_t>(wlen), L'\0');
+            ::MultiByteToWideChar(CP_UTF8, 0, line.c_str(), -1, wline.data(), wlen);
+            ::OutputDebugStringW(wline.c_str());
+        }
+    }
+#else
+    (void)prefix; (void)msg;
+#endif
+}
+} // anonymous namespace
+
 void BootstrapLogger::trace(std::string_view msg) {
     std::cerr << "[BOOT] [trace] " << msg << '\n';
+    outputToDebugger("[BOOT] [trace] ", msg);
 }
 void BootstrapLogger::info(std::string_view msg) {
     std::cerr << "[BOOT] [info]  " << msg << '\n';
+    outputToDebugger("[BOOT] [info]  ", msg);
 }
 void BootstrapLogger::warn(std::string_view msg) {
     std::cerr << "[BOOT] [warn]  " << msg << '\n';
+    outputToDebugger("[BOOT] [warn]  ", msg);
 }
 void BootstrapLogger::error(std::string_view msg) {
     std::cerr << "[BOOT] [error] " << msg << '\n';
+    outputToDebugger("[BOOT] [error] ", msg);
 }
 
 // ---------------------------------------------------------------------------
@@ -51,6 +80,13 @@ std::array<std::shared_ptr<spdlog::logger>, kCategoryCount> s_loggers;
 
 // 初期化済みフラグ
 bool s_initialized = false;
+
+#ifdef _WIN32
+// Logger::init() 前のコンソールコードページを保存する変数。
+// shutdown() で元の値に戻すために使用する。
+UINT s_prevOutputCP = 0;
+UINT s_prevInputCP  = 0;
+#endif
 
 // spdlog レベルへの変換
 spdlog::level::level_enum toSpdlogLevel(LogLevel level) {
@@ -91,23 +127,50 @@ void Logger::init(std::string_view logFile) {
     // 二重初期化を防ぐ
     if (s_initialized) return;
 
-    // 共有シンク（コンソール + ファイル）
-    auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-    consoleSink->set_level(spdlog::level::trace);
+#ifdef _WIN32
+    // 元のコードページを保存してから UTF-8 に切り替える。
+    // 他プロセスやユーザー操作への副作用を最小化するため、
+    // shutdown() で元の値を復元する。
+    s_prevOutputCP = ::GetConsoleOutputCP();
+    s_prevInputCP  = ::GetConsoleCP();
+    ::SetConsoleOutputCP(CP_UTF8);
+    ::SetConsoleCP(CP_UTF8);
+#endif
 
-    auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
-        std::string(logFile), /*truncate=*/true);
-    fileSink->set_level(spdlog::level::trace);
+    // コードページ切り替え後に例外が発生した場合は catch で復元する
+    try {
+        // 共有シンク（コンソール + ファイル）
+        auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+        consoleSink->set_level(spdlog::level::trace);
 
-    std::vector<spdlog::sink_ptr> sinks{ consoleSink, fileSink };
+        auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
+            std::string(logFile), /*truncate=*/true);
+        fileSink->set_level(spdlog::level::trace);
 
-    // 各カテゴリロガーを生成
-    for (std::size_t i = 0; i < kCategoryCount; ++i) {
-        s_loggers[i] = createCategoryLogger(kCategoryNames[i], sinks);
+        std::vector<spdlog::sink_ptr> sinks{ consoleSink, fileSink };
+
+#ifdef _WIN32
+        // windowsのときはVisual Studio用のシンクを追加する
+        auto msvcSink = std::make_shared<mk::msvc_sink_mt>();
+        msvcSink->set_level(spdlog::level::trace);
+        sinks.push_back(msvcSink);
+#endif
+
+        // 各カテゴリロガーを生成
+        for (std::size_t i = 0; i < kCategoryCount; ++i) {
+            s_loggers[i] = createCategoryLogger(kCategoryNames[i], sinks);
+        }
+
+        s_initialized = true;
+        s_loggers[static_cast<std::size_t>(LogCategory::Core)]->info("Logger initialized");
+    } catch (...) {
+#ifdef _WIN32
+        // 初期化失敗時はコードページを元の値に戻してから再スロー
+        ::SetConsoleOutputCP(s_prevOutputCP);
+        ::SetConsoleCP(s_prevInputCP);
+#endif
+        throw;
     }
-
-    s_initialized = true;
-    s_loggers[static_cast<std::size_t>(LogCategory::Core)]->info("Logger initialized");
 }
 
 // ---------------------------------------------------------------------------
@@ -123,6 +186,12 @@ void Logger::shutdown() {
 
     spdlog::shutdown();
     s_initialized = false;
+
+#ifdef _WIN32
+    // init() で変更したコードページを元の値に戻す
+    ::SetConsoleOutputCP(s_prevOutputCP);
+    ::SetConsoleCP(s_prevInputCP);
+#endif
 }
 
 // ---------------------------------------------------------------------------
