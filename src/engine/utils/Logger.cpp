@@ -81,6 +81,13 @@ std::array<std::shared_ptr<spdlog::logger>, kCategoryCount> s_loggers;
 // 初期化済みフラグ
 bool s_initialized = false;
 
+#ifdef _WIN32
+// Logger::init() 前のコンソールコードページを保存する変数。
+// shutdown() で元の値に戻すために使用する。
+UINT s_prevOutputCP = 0;
+UINT s_prevInputCP  = 0;
+#endif
+
 // spdlog レベルへの変換
 spdlog::level::level_enum toSpdlogLevel(LogLevel level) {
     switch (level) {
@@ -121,8 +128,11 @@ void Logger::init(std::string_view logFile) {
     if (s_initialized) return;
 
 #ifdef _WIN32
-    // コンソールの入出力コードページを UTF-8 に設定する。
-    // デフォルトは CP932(Shift-JIS) 等のため、UTF-8 文字列をそのまま流すと文字化けが発生する。
+    // 元のコードページを保存してから UTF-8 に切り替える。
+    // 他プロセスやユーザー操作への副作用を最小化するため、
+    // shutdown() で元の値を復元する。
+    s_prevOutputCP = ::GetConsoleOutputCP();
+    s_prevInputCP  = ::GetConsoleCP();
     ::SetConsoleOutputCP(CP_UTF8);
     ::SetConsoleCP(CP_UTF8);
 #endif
@@ -166,6 +176,12 @@ void Logger::shutdown() {
 
     spdlog::shutdown();
     s_initialized = false;
+
+#ifdef _WIN32
+    // init() で変更したコードページを元の値に戻す
+    ::SetConsoleOutputCP(s_prevOutputCP);
+    ::SetConsoleCP(s_prevInputCP);
+#endif
 }
 
 // ---------------------------------------------------------------------------
