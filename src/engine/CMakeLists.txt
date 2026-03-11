@@ -20,8 +20,8 @@ target_link_libraries(makai_engine PUBLIC
     glm::glm
 )
 
-# RapidJSON は header-only のため include ディレクトリのみ追加
-target_include_directories(makai_engine PUBLIC
+# RapidJSON は header-only かつエンジン内部実装のみで使用するため PRIVATE に追加
+target_include_directories(makai_engine PRIVATE
     ${rapidjson_SOURCE_DIR}/include
 )
 

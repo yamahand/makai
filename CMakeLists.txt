@@ -77,11 +77,11 @@ FetchContent_Declare(
     GIT_TAG        v1.92.6
 )
 
-# RapidJSON (header-only)
+# RapidJSON (header-only) — v1.1.0 の不変コミット SHA にピン留め（サプライチェーン攻撃対策）
 FetchContent_Declare(
     rapidjson
     GIT_REPOSITORY https://github.com/Tencent/rapidjson.git
-    GIT_TAG        v1.1.0
+    GIT_TAG        f54b0e47a08782a6131cc3d60f94d038fa6e0a51
 )
 
 # GLM (OpenGL Mathematics) - header-only

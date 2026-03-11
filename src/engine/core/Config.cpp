@@ -3,6 +3,7 @@
 #include <rapidjson/prettywriter.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/istreamwrapper.h>
+#include <rapidjson/error/en.h>
 #include <fstream>
 #include <iostream>
 #include <SDL3/SDL_log.h>
@@ -26,7 +27,10 @@ Config Config::load(const std::string& path) {
 
         if (doc.HasParseError()) {
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                        "JSON parse error at offset %zu", doc.GetErrorOffset());
+                        "JSON parse error in '%s' at offset %zu: %s",
+                        path.c_str(),
+                        doc.GetErrorOffset(),
+                        rapidjson::GetParseError_En(doc.GetParseError()));
             return config;
         }
 
