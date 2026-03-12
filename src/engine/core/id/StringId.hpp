@@ -17,8 +17,15 @@ using StringID = uint32_t;
 inline constexpr StringID InvalidStringID = 0;
 
 // FNV-1a 32bit ハッシュで文字列をハッシュ化する
+// nullptr の場合は InvalidStringID を返す
+// 結果が 0 の場合は 1 に変換し、0 を無効値として予約する
 constexpr StringID HashString(const char* str)
 {
+    if (str == nullptr)
+    {
+        return InvalidStringID;
+    }
+
     // FNV-1a パラメータ（32bit）
     constexpr uint32_t fnvOffsetBasis = 2166136261u;
     constexpr uint32_t fnvPrime = 16777619u;
@@ -30,7 +37,9 @@ constexpr StringID HashString(const char* str)
         hash *= fnvPrime;
         ++str;
     }
-    return hash;
+
+    // 0 は InvalidStringID として予約されているため回避する
+    return (hash == InvalidStringID) ? 1u : hash;
 }
 
 // HashString のエイリアス（短縮形）

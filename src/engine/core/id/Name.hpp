@@ -5,7 +5,7 @@
 // 使用例:
 //   Name name("player");
 //   if (name == Name("enemy")) { /* ... */ }
-//   StringID id = name.GetID();
+//   StringID id = name.getId();
 
 #include "StringId.hpp"
 
@@ -18,13 +18,13 @@ public:
     constexpr Name() : m_id(InvalidStringID) {}
 
     // 文字列からの構築
-    constexpr Name(const char* str) : m_id(SID(str)) {}
+    constexpr explicit Name(const char* str) : m_id(SID(str)) {}
 
     // StringID からの構築
     constexpr explicit Name(StringID id) : m_id(id) {}
 
     // ハッシュIDを取得する
-    constexpr StringID GetID() const { return m_id; }
+    constexpr StringID getId() const { return m_id; }
 
     // 比較演算子
     constexpr bool operator==(const Name& other) const { return m_id == other.m_id; }
@@ -34,8 +34,8 @@ public:
     constexpr bool operator<(const Name& other) const { return m_id < other.m_id; }
 
     // 有効な名前かどうか
-    constexpr bool IsValid() const { return m_id != InvalidStringID; }
-    constexpr explicit operator bool() const { return IsValid(); }
+    constexpr bool isValid() const { return m_id != InvalidStringID; }
+    constexpr explicit operator bool() const { return isValid(); }
 
 private:
     StringID m_id;

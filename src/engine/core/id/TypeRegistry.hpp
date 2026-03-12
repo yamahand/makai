@@ -1,7 +1,10 @@
 #pragma once
 // TypeRegistry — C++ の型に一意の整数IDを割り当てる
-// ECS / serialization / reflection-lite などで使用する
+// ECS / reflection-lite などランタイム内での型識別に使用する
 // RTTI に依存しない
+//
+// 注意: IDは型の初出順に採番されるため、実行ごとに値が変わり得る
+//       永続化（serialization）には型名ハッシュ等の安定したID方式を別途使用すること
 //
 // 使用例:
 //   uint32_t id1 = TypeID<PlayerComponent>::Get();
@@ -11,6 +14,7 @@
 
 #include <cstdint>
 #include <atomic>
+#include <cassert>
 
 namespace mk {
 
@@ -20,7 +24,10 @@ namespace detail {
 inline uint32_t NextTypeID()
 {
     static std::atomic<uint32_t> s_counter{1};
-    return s_counter.fetch_add(1, std::memory_order_relaxed);
+    uint32_t id = s_counter.fetch_add(1, std::memory_order_relaxed);
+    // オーバーフローによるID重複を検出する
+    assert(id != 0 && "TypeID counter overflow");
+    return id;
 }
 
 } // namespace detail
