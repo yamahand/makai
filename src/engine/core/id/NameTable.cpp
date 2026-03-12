@@ -46,8 +46,20 @@ Name NameTable::make(const char* str)
 
     // 新規登録
     uint32_t index = static_cast<uint32_t>(m_entries.size());
-    m_entries.push_back(NameEntry{id, std::string(str)});
-    m_indexMap.emplace(id, index);
+    try
+    {
+        m_entries.push_back(NameEntry{id, std::string(str)});
+        m_indexMap.emplace(id, index);
+    }
+    catch (...)
+    {
+        // 片方だけ更新された場合に備えてロールバックしてから再送出する
+        if (m_entries.size() > index)
+        {
+            m_entries.pop_back();
+        }
+        throw;
+    }
 
     return Name(id);
 }
