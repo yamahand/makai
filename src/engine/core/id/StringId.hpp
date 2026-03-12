@@ -19,7 +19,7 @@ inline constexpr StringID InvalidStringID = 0;
 // FNV-1a 32bit ハッシュで文字列をハッシュ化する
 // nullptr の場合は InvalidStringID を返す
 // 結果が 0 の場合は 1 に変換し、0 を無効値として予約する
-constexpr StringID HashString(const char* str)
+constexpr StringID hashString(const char* str)
 {
     if (str == nullptr)
     {
@@ -42,10 +42,11 @@ constexpr StringID HashString(const char* str)
     return (hash == InvalidStringID) ? 1u : hash;
 }
 
-// HashString のエイリアス（短縮形）
+// hashString の短縮エイリアス（constexpr 関数）
+// 意図的に全大文字を維持している（マクロ風の短縮名として可読性を優先）
 constexpr StringID SID(const char* str)
 {
-    return HashString(str);
+    return hashString(str);
 }
 
 } // namespace mk
