@@ -44,10 +44,17 @@ constexpr StringID hashString(const char* str)
 }
 
 // hashString の短縮エイリアス（constexpr 関数）
-// 意図的に全大文字を維持している（マクロ風の短縮名として可読性を優先）
-constexpr StringID SID(const char* str)
+// エンジンの命名規則に合わせた lowerCamelCase の本命API
+constexpr StringID sid(const char* str)
 {
     return hashString(str);
 }
 
+// 互換用のエイリアス関数
+// 新規コードでは mk::sid() の使用を推奨
+[[deprecated("Use mk::sid() instead.")]]
+constexpr StringID SID(const char* str)
+{
+    return sid(str);
+}
 } // namespace mk
