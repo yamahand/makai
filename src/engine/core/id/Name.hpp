@@ -7,7 +7,7 @@
 //   if (name == Name("enemy")) { /* ... */ }
 //   StringID id = name.GetID();
 
-#include "string_id.h"
+#include "StringId.hpp"
 
 namespace mk {
 
