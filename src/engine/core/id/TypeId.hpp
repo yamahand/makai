@@ -7,10 +7,10 @@
 //       永続化（serialization）には型名ハッシュ等の安定したID方式を別途使用すること
 //
 // 使用例:
-//   uint32_t id1 = TypeId<PlayerComponent>();
-//   uint32_t id2 = TypeId<TransformComponent>();
+//   TypeId id1 = typeId<PlayerComponent>();
+//   TypeId id2 = typeId<TransformComponent>();
 //   assert(id1 != id2);
-//   assert(id1 == TypeId<PlayerComponent>()); // 同じ型は同じID
+//   assert(id1 == typeId<PlayerComponent>()); // 同じ型は同じID
 
 #include <cstdint>
 #include <atomic>
