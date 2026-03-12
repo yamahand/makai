@@ -1,5 +1,6 @@
 #pragma once
 // 文字列ハッシュID — 文字列比較を高速な整数比較に変換する
+// 衝突が起こり得るため、同じ文字列は同じIDになりますが、異なる文字列が同じIDになる可能性もあります
 //
 // 使用例:
 //   constexpr StringID playerID = SID("player");
