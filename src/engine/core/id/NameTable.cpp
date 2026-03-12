@@ -1,5 +1,8 @@
 // NameTable の実装
 #include "NameTable.hpp"
+#include "engine/utils/Logger.hpp"
+
+#include <cassert>
 
 namespace mk {
 
@@ -20,10 +23,24 @@ Name NameTable::make(const char* str)
 
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    // 既に登録済みならそのまま返す
+    // 同一 StringID が既に登録されているか確認する
     auto it = m_indexMap.find(id);
     if (it != m_indexMap.end())
     {
+        const auto& existing = m_entries[it->second].string;
+
+        // ハッシュ衝突検出: 異なる文字列が同一 StringID にマッピングされた場合
+        if (existing != str)
+        {
+            // Debug ビルドでは即座に停止して開発者に衝突を通知する
+            assert(false && "NameTable: StringID ハッシュ衝突を検出");
+
+            // Release ビルドではログを出力し、先に登録された文字列の Name を返す
+            CORE_ERROR("NameTable: ハッシュ衝突を検出 — "
+                       "StringID={:#010x} 既存=\"{}\" 新規=\"{}\"",
+                       id, existing, str);
+        }
+
         return Name(id);
     }
 
