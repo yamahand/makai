@@ -18,7 +18,7 @@ public:
     constexpr Name() : m_id(InvalidStringID) {}
 
     // 文字列からの構築
-    constexpr explicit Name(const char* str) : m_id(SID(str)) {}
+    constexpr explicit Name(const char* str) : m_id(sid(str)) {}
 
     // StringID からの構築
     constexpr explicit Name(StringID id) : m_id(id) {}
