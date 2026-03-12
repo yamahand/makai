@@ -19,13 +19,17 @@
 
 namespace mk {
 
+// 型ごとに一意のIDを返す
+// 同じ型なら常に同じIDを返す（実行中は安定）
+using TypeId = uint32_t;
+
 namespace detail {
 
 // 型IDカウンター（スレッドセーフ）
-inline uint32_t nextTypeId()
+inline TypeId nextTypeId()
 {
-    static std::atomic<uint32_t> s_counter{1};
-    uint32_t id = s_counter.fetch_add(1, std::memory_order_relaxed);
+    static std::atomic<TypeId> s_counter{1};
+    TypeId id = s_counter.fetch_add(1, std::memory_order_relaxed);
     // オーバーフローによるID重複を検出する
     assert(id != 0 && "TypeID counter overflow");
     // Release ビルドでも安全性を担保する
@@ -38,16 +42,11 @@ inline uint32_t nextTypeId()
 
 } // namespace detail
 
-// 型ごとに一意のIDを返す
-// 同じ型なら常に同じIDを返す（実行中は安定）
 template<typename T>
-struct TypeID
+TypeId typeId()
 {
-    static uint32_t get()
-    {
-        static const uint32_t s_id = detail::nextTypeId();
-        return s_id;
-    }
-};
+    static const TypeId id = detail::nextTypeId();
+    return id;
+}
 
 } // namespace mk
