@@ -23,6 +23,8 @@
 
 #include "TypeInfo.hpp"
 #include "StringId.hpp"
+#include "TypeId.hpp"
+#include "Name.hpp"
 
 #include <cassert>
 #include <mutex>
