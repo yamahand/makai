@@ -144,7 +144,6 @@ Handle<Tag> HandlePool<T, Tag, Capacity>::create(Args&&... args)
     if (m_freeTop == 0)
     {
         // プール枯渇: 無効ハンドルを返す
-        // assert(false && "HandlePool: プールが満杯です");
         return HandleType{};
     }
 
