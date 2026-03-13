@@ -120,7 +120,7 @@ TypeId TypeRegistry::registerType(
         assert(false && "TypeRegistry: size==0 の型は登録できない");
         const char* typeName = name.toString();
         CORE_ERROR("TypeRegistry: size==0 の型は登録できない — 登録を拒否します (Name={}, TypeId={})",
-                   typeName ? typeName : "<?Invalid Name?>", id);
+                   typeName ? typeName : "(unregistered)", id);
         return 0;
     }
     if (alignment == 0 || (alignment & (alignment - 1)) != 0)
@@ -129,7 +129,7 @@ TypeId TypeRegistry::registerType(
         assert(false && "TypeRegistry: 無効な alignment 値 (0 または 2 の冪ではない) は登録できない");
         const char* typeName = NameTable::instance().toString(name);
         CORE_ERROR("TypeRegistry: 無効な alignment={} は登録できない — 登録を拒否します (Name={}, TypeId={})",
-                   alignment, typeName ? typeName : "<?Invalid Name?>", id);
+                   alignment, typeName ? typeName : "(unregistered)", id);
         return 0;
     }
 
