@@ -135,10 +135,37 @@ TypeId TypeRegistry::registerType(
 
     std::unique_lock lock(m_mutex);
 
-    if (m_types.contains(id))
+    auto it = m_types.find(id);
+    if (it != m_types.end())
     {
-        assert(false && "TypeRegistry: 既に登録済みの TypeId を再登録しようとした");
-        CORE_WARN("TypeRegistry: TypeId={} は既に登録済み — 既存の登録を維持する", id);
+        const TypeInfo& existing = it->second;
+
+        const bool sameName      = (existing.name == name);
+        const bool sameSize      = (existing.size == size);
+        const bool sameAlignment = (existing.alignment == alignment);
+
+        if (!sameName || !sameSize || !sameAlignment)
+        {
+            const char* existingNameCStr = existing.name.toString();
+            const char* newNameCStr      = name.toString();
+
+            // 同一 TypeId に対して異なるメタデータが登録されようとしているのはバグ
+            assert(false && "TypeRegistry: 同一 TypeId に異なるメタデータを再登録しようとした");
+            CORE_ERROR(
+                "TypeRegistry: TypeId={} は既に登録済みですが、異なるメタデータで再登録されました。\n"
+                "  既存: Name={}, size={}, alignment={}\n"
+                "  新規: Name={}, size={}, alignment={}",
+                id,
+                existingNameCStr ? existingNameCStr : "(unregistered)", existing.size, existing.alignment,
+                newNameCStr ? newNameCStr : "(unregistered)", size, alignment);
+        }
+        else
+        {
+            // 同一メタデータでの再登録は冪等として扱う
+            CORE_WARN("TypeRegistry: TypeId={} は既に同一メタデータで登録済み — 再登録要求を無視します", id);
+        }
+
+        // いずれの場合も既存の登録を維持する
         return id;
     }
 
