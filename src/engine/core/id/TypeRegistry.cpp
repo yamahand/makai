@@ -120,11 +120,21 @@ TypeId TypeRegistry::registerType(
     info.alignment = alignment;
 
     m_types.emplace(id, info);
-    m_nameIndex.emplace(name.getId(), id);
 
+    // emplace の戻り値を確認して Name 衝突を検出する
+    const char* nameStr = NameTable::instance().toString(name);
+    auto [nameIt, nameInserted] = m_nameIndex.emplace(name.getId(), id);
+    if (!nameInserted)
+    {
+        assert(false && "TypeRegistry: 同一 Name で異なる TypeId の登録を検出");
+        CORE_WARN("TypeRegistry: Name の衝突を検出 — name=\"{}\" 既存 TypeId={} 新規 TypeId={}",
+                  nameStr ? nameStr : "(unknown)", nameIt->second, id);
+    }
+
+    // toString() が nullptr を返す場合に備えてフォールバック文字列を使用する
     CORE_INFO("TypeRegistry: 型を登録 — id={} name=\"{}\" size={} align={}",
               id,
-              NameTable::instance().toString(name),
+              nameStr ? nameStr : "(unknown)",
               size,
               alignment);
 

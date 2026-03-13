@@ -268,9 +268,9 @@ RendererはHandleでリソースを管理します。
 ```id="bqemx2"
 core
  ├ handle
- │   ├ Handle.h
- │   ├ HandlePool.h
- │   └ HandleTypes.h
+ │   ├ Handle.hpp
+ │   ├ HandlePool.hpp
+ │   └ HandleTypes.hpp
 ```
 
 例

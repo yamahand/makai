@@ -160,7 +160,8 @@ void HandlePool<T, Tag, Capacity>::destroy(HandleType handle)
     Slot& slot = m_slots[index];
 
     // デストラクタを明示的に呼ぶ
-    std::destroy_at(reinterpret_cast<T*>(slot.storage));
+    // std::launder: placement new 後のポインタ取得に必要（UB回避）
+    std::destroy_at(std::launder(reinterpret_cast<T*>(slot.storage)));
     slot.alive = false;
 
     // generation をインクリメントして古いハンドルを無効化する
@@ -186,7 +187,8 @@ T* HandlePool<T, Tag, Capacity>::get(HandleType handle)
     {
         return nullptr;
     }
-    return reinterpret_cast<T*>(m_slots[handle.index()].storage);
+    // std::launder: placement new 後のポインタ取得に必要（UB回避）
+    return std::launder(reinterpret_cast<T*>(m_slots[handle.index()].storage));
 }
 
 template<typename T, typename Tag, uint32_t Capacity>
@@ -196,7 +198,8 @@ const T* HandlePool<T, Tag, Capacity>::get(HandleType handle) const
     {
         return nullptr;
     }
-    return reinterpret_cast<const T*>(m_slots[handle.index()].storage);
+    // std::launder: placement new 後のポインタ取得に必要（UB回避）
+    return std::launder(reinterpret_cast<const T*>(m_slots[handle.index()].storage));
 }
 
 template<typename T, typename Tag, uint32_t Capacity>

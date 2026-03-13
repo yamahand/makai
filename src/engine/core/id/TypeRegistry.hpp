@@ -24,6 +24,7 @@
 #include "TypeInfo.hpp"
 #include "StringId.hpp"
 
+#include <mutex>
 #include <shared_mutex>
 #include <unordered_map>
 
@@ -119,7 +120,11 @@ TypeId TypeRegistry::registerType()
     info.alignment = alignof(T);
 
     m_types.emplace(id, info);
-    m_nameIndex.emplace(name.getId(), id);
+
+    // emplace の戻り値を確認して Name 衝突を検出する
+    // ヘッダ内テンプレートのため Logger は使えない。衝突は assert で検出する
+    [[maybe_unused]] auto [nameIt, nameInserted] = m_nameIndex.emplace(name.getId(), id);
+    assert(nameInserted && "TypeRegistry: 同一 Name で異なる TypeId の登録を検出");
 
     return id;
 }

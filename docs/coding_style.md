@@ -170,8 +170,21 @@ enum class TextureFormat
 
 **lowercase**
 
+レイヤーごとに使用する名前空間を分ける。
+
+| レイヤー | 名前空間 |
+|---------|---------|
+| エンジン層（`src/engine/`） | `mk::` |
+| ゲーム層（`src/game/`） | `makai::` |
+
+例
+
 ```
-namespace mk
+namespace mk        // エンジン層
+{
+}
+
+namespace makai     // ゲーム層
 {
 }
 ```
@@ -413,6 +426,9 @@ loadMesh("enemy.fbx")
 Texture* getTexture(TextureHandle handle);
 Entity& getEntity(EntityID id);
 ```
+
+> **注意:** 既存の一部 API（`TextureManager::getTexture` 等）は過渡的に
+> `nullptr` を返す実装になっている。新規 API では上記ルールを厳守すること。
 
 ---
 
