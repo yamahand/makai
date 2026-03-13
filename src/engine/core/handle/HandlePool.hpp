@@ -43,6 +43,9 @@ class HandlePool
 public:
     using HandleType = Handle<Tag>;
 
+    // Capacity は 0 を許可しない（ゼロ長配列を防ぐため）
+    static_assert(Capacity > 0, "HandlePool Capacity must be greater than 0.");
+
     HandlePool();
     ~HandlePool();
 
