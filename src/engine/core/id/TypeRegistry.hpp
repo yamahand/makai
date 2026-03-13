@@ -28,6 +28,7 @@
 #include <mutex>
 #include <shared_mutex>
 #include <unordered_map>
+#include <cstdlib>
 
 namespace mk {
 
@@ -123,14 +124,15 @@ TypeId TypeRegistry::registerType()
     m_types.emplace(id, info);
 
     // emplace の戻り値を確認して Name 衝突を検出する
-    // ヘッダ内テンプレートのため Logger は使えない。衝突は assert で検出する
+    // ヘッダ内テンプレートのため Logger は使えない。衝突は assert と abort で検出・停止する
     auto [nameIt, nameInserted] = m_nameIndex.emplace(name.getId(), id);
     if (!nameInserted)
     {
         // m_types をロールバックして両インデックスの整合性を保つ
         m_types.erase(id);
+        // この時点で致命的な不整合が発生しているため、Release ビルドでも必ず異常終了する
         assert(false && "TypeRegistry: 同一 Name で異なる TypeId の登録を検出");
-        return 0; // 無効な TypeId
+        std::abort();
     }
 
     return id;
