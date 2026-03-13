@@ -29,6 +29,7 @@
 #include <shared_mutex>
 #include <unordered_map>
 #include <cstdlib>
+#include <cstdio>
 
 namespace mk {
 
@@ -136,6 +137,8 @@ TypeId TypeRegistry::registerType()
             // テンプレート版では typeId<T>() が型ごとに一意なIDを生成する。
             // 同一 Name で異なる TypeId が衝突した場合は型名ハッシュの衝突であり、
             // エンジンの根本的な不整合を示すため、Release ビルドでも即座に終了する。
+            // NDEBUG 時には assert が無効化されるため、std::abort() の前に理由を stderr に出力する
+            std::fputs("TypeRegistry: 同一 Name で異なる TypeId の登録を検出したため、異常終了します。\n", stderr);
             assert(false && "TypeRegistry: 同一 Name で異なる TypeId の登録を検出");
             std::abort();
         }
