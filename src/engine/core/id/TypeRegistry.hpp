@@ -7,7 +7,7 @@
 //   - 手動登録 registerType(TypeId, Name, size, alignment) の提供
 //
 // スレッドセーフ:
-//   - 読み取り（getType / findType）は shared_lock（並列読み取り可能）
+//   - 読み取り（findType）は shared_lock（並列読み取り可能）
 //   - 書き込み（registerType）は unique_lock
 //   - double-checked locking でテンプレート版の登録コストを最小化
 //
