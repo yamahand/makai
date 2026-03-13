@@ -251,7 +251,7 @@ struct TypeInfo
 {
     TypeId id;
 
-    StringID name;
+    Name name;
 
     size_t size;
 
@@ -280,13 +280,16 @@ public:
     template<typename T>
     TypeId registerType();
 
-    TypeInfo* getType(TypeId id);
+    TypeId registerType(TypeId id, Name name, size_t size, size_t alignment);
 
-    TypeInfo* findType(StringID name);
+    const TypeInfo* findType(TypeId id) const;
+
+    const TypeInfo* findType(Name name) const;
 
 private:
 
-    HashMap<TypeId, TypeInfo> m_types;
+    std::unordered_map<TypeId, TypeInfo> m_types;
+    std::unordered_map<StringID, TypeId> m_nameIndex;
 
 };
 ```

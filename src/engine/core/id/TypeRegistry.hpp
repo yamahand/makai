@@ -125,14 +125,26 @@ TypeId TypeRegistry::registerType()
 
     // emplace の戻り値を確認して Name 衝突を検出する
     // ヘッダ内テンプレートのため Logger は使えない。衝突は assert と abort で検出・停止する
-    auto [nameIt, nameInserted] = m_nameIndex.emplace(name.getId(), id);
-    if (!nameInserted)
+    // 例外安全: m_nameIndex.emplace が例外を投げた場合は m_types をロールバックする
+    try
     {
-        // m_types をロールバックして両インデックスの整合性を保つ
+        const bool nameInserted = m_nameIndex.emplace(name.getId(), id).second;
+        if (!nameInserted)
+        {
+            // m_types をロールバックして両インデックスの整合性を保つ
+            m_types.erase(id);
+            // テンプレート版では typeId<T>() が型ごとに一意なIDを生成する。
+            // 同一 Name で異なる TypeId が衝突した場合は型名ハッシュの衝突であり、
+            // エンジンの根本的な不整合を示すため、Release ビルドでも即座に終了する。
+            assert(false && "TypeRegistry: 同一 Name で異なる TypeId の登録を検出");
+            std::abort();
+        }
+    }
+    catch (...)
+    {
+        // m_nameIndex.emplace が bad_alloc 等を投げた場合にロールバックして再送出
         m_types.erase(id);
-        // この時点で致命的な不整合が発生しているため、Release ビルドでも必ず異常終了する
-        assert(false && "TypeRegistry: 同一 Name で異なる TypeId の登録を検出");
-        std::abort();
+        throw;
     }
 
     return id;
