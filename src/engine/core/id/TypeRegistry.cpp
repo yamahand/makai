@@ -118,7 +118,7 @@ TypeId TypeRegistry::registerType(
     {
         // サイズ 0 の型は登録できない（不正な TypeInfo を防ぐ）
         assert(false && "TypeRegistry: size==0 の型は登録できない");
-        const char* typeName = NameTable::instance().toString(name);
+        const char* typeName = name.toString();
         CORE_ERROR("TypeRegistry: size==0 の型は登録できない — 登録を拒否します (Name={}, TypeId={})",
                    typeName ? typeName : "<?Invalid Name?>", id);
         return 0;
