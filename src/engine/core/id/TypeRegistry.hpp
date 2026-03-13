@@ -60,7 +60,8 @@ public:
     //   - size == 0
     //   - alignment が不正（0 や想定外の値など、実装側で不正と判定される状態）
     //   いずれかに該当する場合は登録を行わず:
-    //     Debug/Release 共通: CORE_ERROR ログを出力し、0 を返す
+    //     Debug: assert で停止（継続した場合は CORE_ERROR ログを出力し、0 を返す）
+    //     Release: CORE_ERROR ログを出力し、0 を返す
     //   ※ 呼び出し側は戻り値 0 を「登録失敗」として扱うこと
     //
     // 既に登録済みの TypeId を渡した場合:
@@ -139,7 +140,8 @@ TypeId TypeRegistry::registerType()
     m_types.emplace(id, info);
 
     // emplace の戻り値を確認して Name 衝突を検出する
-    // ヘッダ内テンプレートのため Logger は使えない。衝突は assert と abort で検出・停止する
+    // Logger マクロはヘッダでも利用可能だが、この層では依存を増やしたくないため利用しない。
+    // 衝突は assert と std::abort() によって検出・停止し、致命的な不整合を即座に報告する。
     // 例外安全: m_nameIndex.emplace が例外を投げた場合は m_types をロールバックする
     try
     {
