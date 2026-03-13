@@ -33,6 +33,7 @@
 #include <memory>
 #include <new>
 #include <utility>
+#include <cstdlib>
 
 namespace mk {
 
@@ -172,11 +173,12 @@ void HandlePool<T, Tag, Capacity>::destroy(HandleType handle)
     ++slot.generation;
 
     // generation のオーバーフロー検出（0 になると無効ハンドルと衝突する）
-    // 現実的には発生しないが念のためチェックする
+    // 発生した場合はハンドル安全性が保証できないため、Release ビルドでも fail-fast する
     assert(slot.generation != 0 && "HandlePool: generation がオーバーフローしました");
     if (slot.generation == 0)
     {
-        slot.generation = 1;
+        // TypeId と同様に、理論上到達不能だが到達した場合は致命的エラーとして即時終了する
+        std::abort();
     }
 
     // フリースタックに返却する
