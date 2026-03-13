@@ -117,7 +117,7 @@ HandlePool<T, Tag, Capacity>::~HandlePool()
     {
         if (m_slots[i].alive)
         {
-            std::destroy_at(reinterpret_cast<T*>(m_slots[i].storage));
+            std::destroy_at(std::launder(reinterpret_cast<T*>(m_slots[i].storage)));
             m_slots[i].alive = false;
         }
     }

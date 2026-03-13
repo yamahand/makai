@@ -18,12 +18,13 @@
 // 使用例:
 //   auto& reg = TypeRegistry::instance();
 //   TypeId id = reg.registerType<PlayerComponent>();
-//   const TypeInfo* info = reg.getType(id);
+//   const TypeInfo* info = reg.findType(id);
 //   const TypeInfo* info2 = reg.findType(Name("mk::PlayerComponent"));
 
 #include "TypeInfo.hpp"
 #include "StringId.hpp"
 
+#include <cassert>
 #include <mutex>
 #include <shared_mutex>
 #include <unordered_map>
@@ -59,7 +60,7 @@ public:
     // ------------------------------------------------------------------
     // 検索（未登録なら nullptr）
     // ------------------------------------------------------------------
-    const TypeInfo* getType(TypeId id) const;
+    const TypeInfo* findType(TypeId id) const;
     const TypeInfo* findType(Name name) const;
 
     // 登録済み型の数
@@ -123,8 +124,14 @@ TypeId TypeRegistry::registerType()
 
     // emplace の戻り値を確認して Name 衝突を検出する
     // ヘッダ内テンプレートのため Logger は使えない。衝突は assert で検出する
-    [[maybe_unused]] auto [nameIt, nameInserted] = m_nameIndex.emplace(name.getId(), id);
-    assert(nameInserted && "TypeRegistry: 同一 Name で異なる TypeId の登録を検出");
+    auto [nameIt, nameInserted] = m_nameIndex.emplace(name.getId(), id);
+    if (!nameInserted)
+    {
+        // m_types をロールバックして両インデックスの整合性を保つ
+        m_types.erase(id);
+        assert(false && "TypeRegistry: 同一 Name で異なる TypeId の登録を検出");
+        return 0; // 無効な TypeId
+    }
 
     return id;
 }

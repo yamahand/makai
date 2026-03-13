@@ -34,10 +34,10 @@ TypeRegistry
 
 例
 
-```id="h1c8dn"
+```cpp
 using EntityID = uint32_t;
 using ComponentID = uint32_t;
-using TypeID = uint32_t;
+using TypeId = uint32_t;
 ```
 
 ルール
@@ -47,7 +47,7 @@ using TypeID = uint32_t;
 
 例
 
-```id="6b8bwe"
+```cpp
 constexpr EntityID InvalidEntity = 0;
 ```
 
@@ -71,14 +71,14 @@ StringIDは **文字列を高速に識別するID**です。
 
 ## 例
 
-```id="t3byu1"
-StringID id = StringID("player");
+```cpp
+StringID id = sid("player");
 ```
 
 比較
 
-```id="stpnb3"
-if (id == StringID("player"))
+```cpp
+if (id == sid("player"))
 {
 }
 ```
@@ -87,33 +87,23 @@ if (id == StringID("player"))
 
 # StringID 実装方針
 
-内部は **ハッシュ値**を使用します。
+`StringID` は `uint32_t` の型エイリアスです。
+文字列の生成には `sid()` / `hashString()` 関数を使用します。
 
-例
+```cpp
+// 実装（src/engine/core/id/StringId.hpp）
+using StringID = uint32_t;
 
-```id="k66a7x"
-class StringID
-{
-public:
+// FNV-1a 32bit ハッシュ
+constexpr StringID hashString(const char* str);
 
-    constexpr StringID() = default;
-
-    constexpr StringID(const char* str);
-
-    uint32_t value() const;
-
-private:
-
-    uint32_t m_hash = 0;
-
-};
+// 推奨 API（短縮エイリアス）
+constexpr StringID sid(const char* str);
 ```
 
-推奨ハッシュ
+ハッシュアルゴリズム
 
-* FNV1a
-* xxHash
-* RapidHash
+* FNV-1a（採用済み）
 
 ---
 
@@ -131,7 +121,7 @@ Nameは **StringID のみを保持する軽量型**です。
 
 例
 
-```id="8f83ol"
+```cpp
 class Name
 {
 public:
@@ -179,7 +169,7 @@ NameTableは **文字列インターンテーブル**です。
 
 例
 
-```id="name_table_ex"
+```cpp
 auto& table = NameTable::instance();
 
 Name name = table.make("player");       // 登録 & Name 取得
@@ -207,12 +197,12 @@ TypeRegistryは **型情報を管理するシステム**です。
 
 ---
 
-## TypeID
+## TypeId
 
-型はすべて **TypeID**を持ちます。
+型はすべて **TypeId**を持ちます。
 
-```id="zvovfd"
-using TypeID = uint32_t;
+```cpp
+using TypeId = uint32_t;
 ```
 
 ---
@@ -223,28 +213,28 @@ using TypeID = uint32_t;
 
 例
 
-```id="2kgmp7"
-TypeID registerType(const char* name);
+```cpp
+TypeId registerType(const char* name);
 ```
 
 テンプレート版
 
-```id="t8mnpd"
+```cpp
 template<typename T>
-TypeID registerType();
+TypeId registerType();
 ```
 
 ---
 
 # 型取得
 
-```id="vfwg0b"
-TypeInfo* getType(TypeID id);
+```cpp
+TypeInfo* getType(TypeId id);
 ```
 
 名前から取得
 
-```id="swbxt4"
+```cpp
 TypeInfo* findType(StringID name);
 ```
 
@@ -256,10 +246,10 @@ TypeInfo* findType(StringID name);
 
 例
 
-```id="67bbzj"
+```cpp
 struct TypeInfo
 {
-    TypeID id;
+    TypeId id;
 
     StringID name;
 
@@ -282,21 +272,21 @@ component flag
 
 # TypeRegistry例
 
-```id="y82xhb"
+```cpp
 class TypeRegistry
 {
 public:
 
     template<typename T>
-    TypeID registerType();
+    TypeId registerType();
 
-    TypeInfo* getType(TypeID id);
+    TypeInfo* getType(TypeId id);
 
     TypeInfo* findType(StringID name);
 
 private:
 
-    HashMap<TypeID, TypeInfo> m_types;
+    HashMap<TypeId, TypeInfo> m_types;
 
 };
 ```
@@ -317,12 +307,12 @@ Attribute
 
 例
 
-```id="5uf6ja"
+```cpp
 struct FieldInfo
 {
     StringID name;
 
-    TypeID type;
+    TypeId type;
 
     size_t offset;
 };
@@ -336,13 +326,13 @@ TypeRegistryは **ECS Component管理**にも使用できます。
 
 例
 
-```id="m9yqbg"
+```cpp
 ComponentID registerComponent<T>();
 ```
 
 取得
 
-```id="35rm5p"
+```cpp
 ComponentInfo* getComponent(ComponentID id);
 ```
 
@@ -350,11 +340,11 @@ ComponentInfo* getComponent(ComponentID id);
 
 # Resource管理
 
-ResourceにもTypeIDを使えます。
+ResourceにもTypeIdを使えます。
 
 例
 
-```id="rrc8m1"
+```cpp
 Texture
 Mesh
 Shader
@@ -363,8 +353,8 @@ Material
 
 例
 
-```id="pbjtiu"
-ResourceHandle loadResource(TypeID type, const char* path);
+```cpp
+ResourceHandle loadResource(TypeId type, const char* path);
 ```
 
 ---

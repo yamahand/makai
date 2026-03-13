@@ -430,6 +430,9 @@ Entity& getEntity(EntityID id);
 > **注意:** 既存の一部 API（`TextureManager::getTexture` 等）は過渡的に
 > `nullptr` を返す実装になっている。新規 API では上記ルールを厳守すること。
 
+> **Handle System の例外:** `HandlePool::get()` はハンドルの有効性チェックを含むため
+> 無効・古いハンドルで `nullptr` を返す。これは Handle System の安全設計上の意図的な例外。
+
 ---
 
 # find

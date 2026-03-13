@@ -126,9 +126,12 @@ TypeId TypeRegistry::registerType(
     auto [nameIt, nameInserted] = m_nameIndex.emplace(name.getId(), id);
     if (!nameInserted)
     {
+        // m_types をロールバックして両インデックスの整合性を保つ
+        m_types.erase(id);
         assert(false && "TypeRegistry: 同一 Name で異なる TypeId の登録を検出");
         CORE_WARN("TypeRegistry: Name の衝突を検出 — name=\"{}\" 既存 TypeId={} 新規 TypeId={}",
                   nameStr ? nameStr : "(unknown)", nameIt->second, id);
+        return 0; // 無効な TypeId
     }
 
     // toString() が nullptr を返す場合に備えてフォールバック文字列を使用する
@@ -141,7 +144,7 @@ TypeId TypeRegistry::registerType(
     return id;
 }
 
-const TypeInfo* TypeRegistry::getType(TypeId id) const
+const TypeInfo* TypeRegistry::findType(TypeId id) const
 {
     std::shared_lock lock(m_mutex);
 

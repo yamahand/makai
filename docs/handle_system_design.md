@@ -19,7 +19,7 @@ Handleとは **オブジェクトを参照するID型**です。
 
 例
 
-```id="c57zk4"
+```cpp
 TextureHandle
 MeshHandle
 EntityHandle
@@ -34,7 +34,7 @@ BufferHandle
 
 ポインタ管理の問題
 
-```id="4gmlup"
+```cpp
 Texture* texture = getTexture();
 
 destroyTexture(texture);
@@ -44,7 +44,7 @@ texture->bind(); // クラッシュ
 
 Handleを使う場合
 
-```id="6j20rr"
+```cpp
 TextureHandle texture = loadTexture("player.png");
 
 Texture* tex = getTexture(texture);
@@ -52,7 +52,7 @@ Texture* tex = getTexture(texture);
 
 破棄後
 
-```id="3uqv9a"
+```cpp
 getTexture(texture) → nullptr
 ```
 
@@ -66,13 +66,13 @@ getTexture(texture) → nullptr
 
 構成
 
-```id="azv7t1"
+```cpp
 | generation | index |
 ```
 
 例
 
-```id="k1t7g1"
+```cpp
 32bit generation
 32bit index
 ```
@@ -83,7 +83,7 @@ getTexture(texture) → nullptr
 
 例
 
-```id="pf63op"
+```cpp
 struct TextureHandle
 {
     uint64_t value = 0;
@@ -92,7 +92,7 @@ struct TextureHandle
 
 またはテンプレート
 
-```id="62xup7"
+```cpp
 template<typename Tag>
 struct Handle
 {
@@ -102,7 +102,7 @@ struct Handle
 
 例
 
-```id="q9ktw3"
+```cpp
 using TextureHandle = Handle<TextureTag>;
 using MeshHandle = Handle<MeshTag>;
 ```
@@ -113,7 +113,7 @@ using MeshHandle = Handle<MeshTag>;
 
 例
 
-```id="w80k7f"
+```cpp
 uint32_t index;
 uint32_t generation;
 
@@ -124,7 +124,7 @@ handle.value = ((uint64_t)generation << 32) | index;
 
 # Handle分解
 
-```id="aq1yys"
+```cpp
 uint32_t index = handle.value & 0xffffffff;
 uint32_t generation = handle.value >> 32;
 ```
@@ -137,7 +137,7 @@ uint32_t generation = handle.value >> 32;
 
 例
 
-```id="9y0bg3"
+```cpp
 template<typename T>
 class HandlePool
 {
@@ -162,7 +162,7 @@ private:
 
 # create
 
-```id="72f70p"
+```cpp
 TextureHandle handle = texturePool.create();
 ```
 
@@ -170,13 +170,13 @@ TextureHandle handle = texturePool.create();
 
 # destroy
 
-```id="ayv4yz"
+```cpp
 texturePool.destroy(handle);
 ```
 
 destroy時
 
-```id="0du2r2"
+```cpp
 generation++
 ```
 
@@ -186,13 +186,13 @@ generation++
 
 # get
 
-```id="ap9k6p"
+```cpp
 Texture* texture = texturePool.get(handle);
 ```
 
 内部チェック
 
-```id="egk78e"
+```cpp
 if (generation != generations[index])
     return nullptr;
 ```
@@ -203,13 +203,13 @@ if (generation != generations[index])
 
 無効ハンドル
 
-```id="o8bwjk"
+```cpp
 constexpr uint64_t InvalidHandle = 0;
 ```
 
 チェック
 
-```id="x9m3sb"
+```cpp
 bool isValid()
 ```
 
@@ -221,13 +221,13 @@ ResourceManagerはHandleを返す。
 
 例
 
-```id="s9xy5g"
+```cpp
 TextureHandle loadTexture(const char* path);
 ```
 
 取得
 
-```id="rsl33p"
+```cpp
 Texture* getTexture(TextureHandle handle);
 ```
 
@@ -237,13 +237,13 @@ Texture* getTexture(TextureHandle handle);
 
 EntityもHandleにできます。
 
-```id="7ct21k"
+```cpp
 using EntityHandle = Handle<EntityTag>;
 ```
 
 例
 
-```id="fmyy4o"
+```cpp
 EntityHandle createEntity();
 void destroyEntity(EntityHandle entity);
 ```
@@ -252,7 +252,7 @@ void destroyEntity(EntityHandle entity);
 
 # GPU Resource例
 
-```id="l3d96d"
+```cpp
 TextureHandle
 BufferHandle
 ShaderHandle
@@ -265,7 +265,7 @@ RendererはHandleでリソースを管理します。
 
 # Handleディレクトリ構造
 
-```id="bqemx2"
+```cpp
 core
  ├ handle
  │   ├ Handle.hpp
@@ -275,7 +275,7 @@ core
 
 例
 
-```id="3z7h2q"
+```cpp
 TextureHandle
 MeshHandle
 MaterialHandle
@@ -296,7 +296,7 @@ Handleは
 
 禁止
 
-```id="8ui11u"
+```cpp
 virtual
 動的メモリ
 ```
@@ -317,7 +317,7 @@ Handleを
 
 例
 
-```id="6yqfzb"
+```cpp
 TextureHandle loadTexture(...);
 
 Texture* getTexture(TextureHandle);
@@ -329,7 +329,7 @@ Texture* getTexture(TextureHandle);
 
 Handleは
 
-```id="gjh6fu"
+```cpp
 index + generation
 ```
 
@@ -343,7 +343,7 @@ index + generation
 
 Handle Systemは
 
-```id="w3o2w9"
+```cpp
 Resource
 ECS
 Renderer
