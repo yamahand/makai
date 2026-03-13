@@ -138,23 +138,30 @@ uint32_t generation = handle.value >> 32;
 例
 
 ```cpp
-template<typename T>
+template<typename T, typename Tag, uint32_t Capacity = 256>
 class HandlePool
 {
 public:
 
-    Handle<T> create();
+    template<typename... Args>
+    Handle<Tag> create(Args&&... args);
 
-    void destroy(Handle<T> handle);
+    void destroy(Handle<Tag> handle);
 
-    T* get(Handle<T> handle);
+    T* get(Handle<Tag> handle);
 
 private:
 
-    Array<T> objects;
+    struct Slot {
+        alignas(T) std::byte storage[sizeof(T)];
+        uint32_t generation = 1;
+        bool     alive      = false;
+    };
 
-    Array<uint32_t> generations;
-
+    Slot     m_slots[Capacity]     {};
+    uint32_t m_freeStack[Capacity] {};
+    uint32_t m_freeTop             = 0;
+    size_t   m_size                = 0;
 };
 ```
 

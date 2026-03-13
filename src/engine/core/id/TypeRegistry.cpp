@@ -101,8 +101,19 @@ TypeRegistry& TypeRegistry::instance()
 TypeId TypeRegistry::registerType(
     TypeId id, Name name, size_t size, size_t alignment)
 {
-    assert(id != 0        && "TypeRegistry: 無効な TypeId (0) は登録できない");
-    assert(name.isValid() && "TypeRegistry: 無効な Name は登録できない");
+    // Release ビルドでも不正な入力は必ず弾く
+    if (id == 0)
+    {
+        assert(false && "TypeRegistry: 無効な TypeId (0) は登録できない");
+        CORE_ERROR("TypeRegistry: 無効な TypeId (0) は登録できない — 登録を拒否します");
+        return 0;
+    }
+    if (!name.isValid())
+    {
+        assert(false && "TypeRegistry: 無効な Name は登録できない");
+        CORE_ERROR("TypeRegistry: 無効な Name は登録できない — 登録を拒否します");
+        return 0;
+    }
 
     std::unique_lock lock(m_mutex);
 
@@ -122,16 +133,30 @@ TypeId TypeRegistry::registerType(
     m_types.emplace(id, info);
 
     // emplace の戻り値を確認して Name 衝突を検出する
+    // 例外安全: m_nameIndex.emplace が例外を投げた場合は m_types をロールバックする
     const char* nameStr = NameTable::instance().toString(name);
-    auto [nameIt, nameInserted] = m_nameIndex.emplace(name.getId(), id);
-    if (!nameInserted)
+    try
     {
-        // m_types をロールバックして両インデックスの整合性を保つ
+        const auto nameResult = m_nameIndex.emplace(name.getId(), id);
+        if (!nameResult.second)
+        {
+            // m_types をロールバックして両インデックスの整合性を保つ
+            m_types.erase(id);
+            // 手動登録での Name 衝突はプログラマーのミス（同一名を別 TypeId で登録しようとした）。
+            // テンプレート版（abort）と異なり既存登録を維持して既存 TypeId を返す。
+            // ログで確実に通知するため呼び出し側がデバッグできる。
+            assert(false && "TypeRegistry: 同一 Name で異なる TypeId の登録を検出");
+            CORE_WARN("TypeRegistry: Name の衝突を検出 — name=\"{}\" 既存 TypeId={} 新規 TypeId={}",
+                      nameStr ? nameStr : "(unknown)", nameResult.first->second, id);
+            // 既存の登録を維持するため、既存の TypeId を返す
+            return nameResult.first->second;
+        }
+    }
+    catch (...)
+    {
+        // m_nameIndex.emplace が bad_alloc 等を投げた場合にロールバックして再送出
         m_types.erase(id);
-        assert(false && "TypeRegistry: 同一 Name で異なる TypeId の登録を検出");
-        CORE_WARN("TypeRegistry: Name の衝突を検出 — name=\"{}\" 既存 TypeId={} 新規 TypeId={}",
-                  nameStr ? nameStr : "(unknown)", nameIt->second, id);
-        return 0; // 無効な TypeId
+        throw;
     }
 
     // toString() が nullptr を返す場合に備えてフォールバック文字列を使用する
