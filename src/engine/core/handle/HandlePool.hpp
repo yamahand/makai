@@ -146,7 +146,7 @@ Handle<Tag> HandlePool<T, Tag, Capacity>::create(Args&&... args)
     ++m_size;
     --m_freeTop;
 
-    return makeHandle<Tag>(index, slot.generation);
+    return detail::makeHandle<Tag>(index, slot.generation);
 }
 
 template<typename T, typename Tag, uint32_t Capacity>
