@@ -30,8 +30,8 @@ struct Handle
     // 上位32bit: 世代番号
     uint32_t generation() const { return static_cast<uint32_t>(value >> 32); }
 
-    // 有効なハンドルかどうか（value == 0 は無効）
-    bool isValid() const { return value != 0; }
+    // 有効なハンドルかどうか（value == 0 または generation == 0 は無効）
+    bool isValid() const { return value != 0 && generation() != 0; }
     explicit operator bool() const { return isValid(); }
 
     bool operator==(const Handle&) const = default;
