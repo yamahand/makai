@@ -121,15 +121,17 @@ TypeId TypeRegistry::registerType()
         }
     }
 
+    // __FUNCSIG__ から型名を抽出して NameTable に登録する（MSVC専用）
+    // 型名生成は TypeRegistry 自体の状態に依存しないため、排他ロック取得前に行うことで
+    // m_mutex の保持時間を短縮し、スレッド間の競合を減らす。
+    Name name = detail::typeNameFromFuncsig(__FUNCSIG__);
+
     // double-checked locking: 排他ロックで再確認してから登録
     std::unique_lock lock(m_mutex);
     if (m_types.contains(id))
     {
         return id;
     }
-
-    // __FUNCSIG__ から型名を抽出して NameTable に登録する（MSVC専用）
-    Name name = detail::typeNameFromFuncsig(__FUNCSIG__);
 
     TypeInfo info;
     info.id        = id;
