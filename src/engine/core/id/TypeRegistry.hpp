@@ -56,6 +56,10 @@ public:
     // 既に登録済みの TypeId を渡した場合:
     //   Debug: assert で停止
     //   Release: CORE_WARN ログを出力し、既存の TypeId を返す
+    //
+    // Name が既に別の TypeId に紐づいている場合（Name 衝突）の挙動:
+    //   Debug: assert で停止
+    //   Release: CORE_WARN ログを出力し、既存の TypeId を返す
     // ------------------------------------------------------------------
     TypeId registerType(TypeId id, Name name, size_t size, size_t alignment);
 
