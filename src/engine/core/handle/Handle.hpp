@@ -42,12 +42,15 @@ struct Handle
 // makeHandle — HandlePool 内部から呼ぶファクトリ関数
 // generation は最低 1 からスタートするため value == 0 にはならない
 // ---------------------------------------------------------------------------
-template<typename Tag>
-Handle<Tag> makeHandle(uint32_t index, uint32_t generation)
+namespace detail
 {
-    Handle<Tag> h;
-    h.value = (static_cast<uint64_t>(generation) << 32) | static_cast<uint64_t>(index);
-    return h;
+    template<typename Tag>
+    Handle<Tag> makeHandle(uint32_t index, uint32_t generation)
+    {
+        Handle<Tag> h;
+        h.value = (static_cast<uint64_t>(generation) << 32) | static_cast<uint64_t>(index);
+        return h;
+    }
 }
 
 } // namespace mk
