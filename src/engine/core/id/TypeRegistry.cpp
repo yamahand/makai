@@ -127,7 +127,7 @@ TypeId TypeRegistry::registerType(
     {
         // alignment は 0 ではなく 2 の冪でなければならない
         assert(false && "TypeRegistry: 無効な alignment 値 (0 または 2 の冪ではない) は登録できない");
-        const char* typeName = NameTable::instance().toString(name);
+        const char* typeName = name.toString();
         CORE_ERROR("TypeRegistry: 無効な alignment={} は登録できない — 登録を拒否します (Name={}, TypeId={})",
                    alignment, typeName ? typeName : "(unregistered)", id);
         return 0;
