@@ -88,15 +88,22 @@ private:
     struct Slot
     {
         alignas(T) std::byte storage[sizeof(T)];
-        uint32_t generation = 1; // 1始まり（0はvalue==0の無効ハンドルと衝突するため）
-        bool     alive      = false;
+        uint32_t generation; // 1始まり（0はvalue==0の無効ハンドルと衝突するため）
+        bool     alive;
+
+        // ストレージは未初期化のままとし、メタデータのみ初期化する
+        Slot() noexcept
+            : generation(1)
+            , alive(false)
+        {
+        }
     };
 
     // ハンドルの検証（共通処理）
     bool isValidHandle(HandleType handle) const;
 
-    Slot     m_slots[Capacity]     {};
-    uint32_t m_freeStack[Capacity] {}; // 空きインデックスのスタック
+    Slot     m_slots[Capacity];
+    uint32_t m_freeStack[Capacity]; // 空きインデックスのスタック
     uint32_t m_freeTop             = 0;
     size_t   m_size                = 0;
 };
