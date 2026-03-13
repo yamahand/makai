@@ -232,10 +232,10 @@ TypeId registerType();
 TypeInfo* getType(TypeId id);
 ```
 
-名前から取得
+Name から取得
 
 ```cpp
-TypeInfo* findType(StringID name);
+TypeInfo* findType(Name name);
 ```
 
 ---
