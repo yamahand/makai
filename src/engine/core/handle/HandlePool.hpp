@@ -134,8 +134,8 @@ Handle<Tag> HandlePool<T, Tag, Capacity>::create(Args&&... args)
         return HandleType{};
     }
 
-    // フリースタックから空きインデックスを取得する
-    const uint32_t index = m_freeStack[--m_freeTop];
+    // フリースタックから空きインデックスを取得する（例外安全のためデクリメントは構築成功後に行う）
+    const uint32_t index = m_freeStack[m_freeTop - 1];
     Slot& slot = m_slots[index];
 
     assert(!slot.alive && "HandlePool: 内部不整合（alive なスロットが freeStack に含まれている）");
@@ -144,6 +144,7 @@ Handle<Tag> HandlePool<T, Tag, Capacity>::create(Args&&... args)
     ::new (slot.storage) T(std::forward<Args>(args)...);
     slot.alive = true;
     ++m_size;
+    --m_freeTop;
 
     return makeHandle<Tag>(index, slot.generation);
 }
