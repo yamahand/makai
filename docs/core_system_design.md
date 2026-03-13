@@ -229,7 +229,7 @@ TypeId registerType();
 # 型取得
 
 ```cpp
-TypeInfo* getType(TypeId id);
+TypeInfo* findType(TypeId id);
 ```
 
 Name から取得
