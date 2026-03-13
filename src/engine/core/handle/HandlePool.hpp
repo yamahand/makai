@@ -139,7 +139,8 @@ HandlePool<T, Tag, Capacity>::~HandlePool()
 
 template<typename T, typename Tag, uint32_t Capacity>
 template<typename... Args>
-Handle<Tag> HandlePool<T, Tag, Capacity>::create(Args&&... args)
+typename HandlePool<T, Tag, Capacity>::HandleType
+HandlePool<T, Tag, Capacity>::create(Args&&... args)
 {
     if (m_freeTop == 0)
     {
