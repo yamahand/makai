@@ -152,7 +152,6 @@ TypeId TypeRegistry::registerType(
 
     // emplace の戻り値を確認して Name 衝突を検出する
     // 例外安全: m_nameIndex.emplace が例外を投げた場合は m_types をロールバックする
-    const char* nameStr = NameTable::instance().toString(name);
     try
     {
         const auto nameResult = m_nameIndex.emplace(name.getId(), id);
@@ -164,8 +163,8 @@ TypeId TypeRegistry::registerType(
             // テンプレート版（abort）と異なり既存登録を維持して既存 TypeId を返す。
             // ログで確実に通知するため呼び出し側がデバッグできる。
             assert(false && "TypeRegistry: 同一 Name で異なる TypeId の登録を検出");
-            CORE_WARN("TypeRegistry: Name の衝突を検出 — name=\"{}\" 既存 TypeId={} 新規 TypeId={}",
-                      nameStr ? nameStr : "(unknown)", nameResult.first->second, id);
+            CORE_WARN("TypeRegistry: Name の衝突を検出 — nameId={} 既存 TypeId={} 新規 TypeId={}",
+                      name.getId(), nameResult.first->second, id);
             // 既存の登録を維持するため、既存の TypeId を返す
             return nameResult.first->second;
         }
@@ -177,10 +176,9 @@ TypeId TypeRegistry::registerType(
         throw;
     }
 
-    // toString() が nullptr を返す場合に備えてフォールバック文字列を使用する
-    CORE_INFO("TypeRegistry: 型を登録 — id={} name=\"{}\" size={} align={}",
+    CORE_INFO("TypeRegistry: 型を登録 — id={} nameId={} size={} align={}",
               id,
-              nameStr ? nameStr : "(unknown)",
+              name.getId(),
               size,
               alignment);
 

@@ -56,7 +56,7 @@ public:
     //
     // 無効な入力値が渡された場合の挙動:
     //   - id == 0
-    //   - name が無効（未初期化 / 空など、実装側で不正と判定される状態）
+    //   - name が無効（未初期化など、Name::isValid() が false を返す状態）
     //   - size == 0
     //   - alignment が不正（0 や想定外の値など、実装側で不正と判定される状態）
     //   いずれかに該当する場合は登録を行わず:
@@ -121,15 +121,17 @@ TypeId TypeRegistry::registerType()
         }
     }
 
+    // __FUNCSIG__ から型名を抽出して NameTable に登録する（MSVC専用）
+    // 型名生成は TypeRegistry 自体の状態に依存しないため、排他ロック取得前に行うことで
+    // m_mutex の保持時間を短縮し、スレッド間の競合を減らす。
+    Name name = detail::typeNameFromFuncsig(__FUNCSIG__);
+
     // double-checked locking: 排他ロックで再確認してから登録
     std::unique_lock lock(m_mutex);
     if (m_types.contains(id))
     {
         return id;
     }
-
-    // __FUNCSIG__ から型名を抽出して NameTable に登録する（MSVC専用）
-    Name name = detail::typeNameFromFuncsig(__FUNCSIG__);
 
     TypeInfo info;
     info.id        = id;
