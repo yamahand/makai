@@ -6,8 +6,8 @@
 //           リフレクションシステムに拡張できる
 //
 // 使用例:
-//   const TypeInfo* info = TypeRegistry::instance().getType(typeId<MyComponent>());
-//   assert(info->size == sizeof(MyComponent));
+//   const TypeInfo* info = TypeRegistry::instance().findType(typeId<MyComponent>());
+//   assert(info && info->size == sizeof(MyComponent));
 
 #include "TypeId.hpp"
 #include "Name.hpp"
