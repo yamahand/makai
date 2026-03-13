@@ -64,6 +64,11 @@ core/
     type/
 ```
 
+※補足  
+現在のリポジトリでは `src/engine/core/` 配下に `Game/` や `Window/`、`SceneManager/`、`ImGuiManager/` など、ここでいうレイヤー構造の「Game / Engine」側に属するモジュールも含まれています。  
+このドキュメントで示している `core/ memory/ ... log/` の構成は「最下層の低レベルCore」を指す概念的な例であり、将来的なリファクタで `src/engine/core/id` や `src/engine/core/memory` などの低レベルユーティリティをこのレイヤーとして整理することを意図しています。  
+現時点では、「Core（最下層）」という用語は **低レベルな共通ユーティリティ群** を指すものとし、`src/engine/core/` 直下の高レベルモジュール（Game/Window/SceneManager/ImGuiManager 等）は「Engine / Game レイヤー側の実装」として扱ってください。
+
 主な機能
 
 ```
