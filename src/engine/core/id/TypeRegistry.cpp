@@ -114,6 +114,22 @@ TypeId TypeRegistry::registerType(
         CORE_ERROR("TypeRegistry: 無効な Name は登録できない — 登録を拒否します");
         return 0;
     }
+    if (size == 0)
+    {
+        // サイズ 0 の型は登録できない（不正な TypeInfo を防ぐ）
+        assert(false && "TypeRegistry: size==0 の型は登録できない");
+        CORE_ERROR("TypeRegistry: size==0 の型は登録できない — 登録を拒否します (Name={}, TypeId={})",
+                   name.toString().c_str(), id);
+        return 0;
+    }
+    if (alignment == 0 || (alignment & (alignment - 1)) != 0)
+    {
+        // alignment は 0 ではなく 2 の冪でなければならない
+        assert(false && "TypeRegistry: 無効な alignment 値 (0 または 2 の冪ではない) は登録できない");
+        CORE_ERROR("TypeRegistry: 無効な alignment={} は登録できない — 登録を拒否します (Name={}, TypeId={})",
+                   alignment, name.toString().c_str(), id);
+        return 0;
+    }
 
     std::unique_lock lock(m_mutex);
 
