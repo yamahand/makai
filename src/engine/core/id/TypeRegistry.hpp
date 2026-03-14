@@ -80,7 +80,9 @@ public:
     //       Release: CORE_ERROR ログを出力し、0 を返す
     //
     // Name が既に別の TypeId に紐づいている場合（Name 衝突）の挙動:
-    //   Debug: assert で停止
+    //   Debug: assert で停止（継続した場合は CORE_ERROR ログを出力し、既存の TypeId を返す）
+    //   Release: CORE_ERROR ログを出力し、既存の TypeId を返す
+    //   ※ 戻り値が引数 id と異なる場合、呼び出し側は「登録失敗（Name 衝突）」として扱うこと
     TypeId registerType(TypeId id, Name name, size_t size, size_t alignment);
     // ------------------------------------------------------------------
 
