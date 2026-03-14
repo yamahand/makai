@@ -114,6 +114,15 @@ TypeId TypeRegistry::registerType(
         CORE_ERROR("TypeRegistry: 無効な Name は登録できない — 登録を拒否します");
         return 0;
     }
+    // Name は NameTable でインターン済みでなければならない
+    if (!NameTable::instance().exists(name))
+    {
+        assert(false && "TypeRegistry: NameTable に未登録の Name は登録できない");
+        const char* typeName = name.toString();
+        CORE_ERROR("TypeRegistry: NameTable に未登録の Name は登録できない — 登録を拒否します (Name={}, TypeId={})",
+                   typeName ? typeName : "(unregistered)", id);
+        return 0;
+    }
     if (size == 0)
     {
         // サイズ 0 の型は登録できない（不正な TypeInfo を防ぐ）
