@@ -88,7 +88,6 @@ public:
 
     // ------------------------------------------------------------------
     // 検索（未登録なら nullptr）
-    // 検索（未登録なら nullptr）
     // ------------------------------------------------------------------
     const TypeInfo* findType(TypeId id) const;
     const TypeInfo* findType(Name name) const;
