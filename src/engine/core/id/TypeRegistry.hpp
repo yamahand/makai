@@ -62,7 +62,7 @@ public:
     //
     // 無効な入力値が渡された場合の挙動:
     //   - id == 0
-    //   - internedName が無効（未初期化など、Name::isValid() が false を返す状態）
+    //   - name が無効（未初期化など、Name::isValid() が false を返す状態）
     //   - name が NameTable にインターンされていない（NameTable::exists(name) が false）
     //   - size == 0
     //   - alignment が不正（0 や想定外の値など、実装側で不正と判定される状態）
@@ -81,11 +81,11 @@ public:
     //
     // Name が既に別の TypeId に紐づいている場合（Name 衝突）の挙動:
     //   Debug: assert で停止
-    TypeId registerType(TypeId id, Name internedName, size_t size, size_t alignment);
-    // ------------------------------------------------------------------
     TypeId registerType(TypeId id, Name name, size_t size, size_t alignment);
+    // ------------------------------------------------------------------
 
     // ------------------------------------------------------------------
+    // 検索（未登録なら nullptr）
     // 検索（未登録なら nullptr）
     // ------------------------------------------------------------------
     const TypeInfo* findType(TypeId id) const;
