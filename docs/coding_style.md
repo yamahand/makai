@@ -206,10 +206,10 @@ namespace mk::render
 例
 
 ```
-Renderer.h
+Renderer.hpp
 Renderer.cpp
 
-TextureLoader.h
+TextureLoader.hpp
 TextureLoader.cpp
 ```
 
@@ -217,6 +217,7 @@ TextureLoader.cpp
 
 * 基本は **1ファイル1クラス**
 * ファイル名とクラス名を一致させる
+* ヘッダファイルの拡張子はプロジェクトの慣習に従う（本リポジトリでは `.hpp`）
 
 ---
 
