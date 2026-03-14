@@ -208,13 +208,13 @@ TypeId TypeRegistry::registerType(
             // m_types をロールバックして両インデックスの整合性を保つ
             m_types.erase(id);
             // 手動登録での Name 衝突はプログラマーのミス（同一名を別 TypeId で登録しようとした）。
-            // この関数では衝突をエラー扱いとし、呼び出し側に失敗（0）を返す。
+            // この関数ではヘッダコメントの仕様に従い、既に登録されている TypeId を返す。
             // ログで確実に通知するため呼び出し側がデバッグできる。
             assert(false && "TypeRegistry: 同一 Name で異なる TypeId の登録を検出");
             CORE_ERROR("TypeRegistry: Name の衝突を検出 — 登録失敗 nameId={} 既存 TypeId={} 新規 TypeId={}",
                        name.getId(), nameResult.first->second, id);
-            // 登録失敗を明示するために無効な TypeId(0) を返す
-            return 0;
+            // 既存の TypeId を返すことで、呼び出し側は既存登録を再利用できる
+            return nameResult.first->second;
         }
     }
     catch (...)
