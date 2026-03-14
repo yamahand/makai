@@ -133,13 +133,17 @@ TypeId TypeRegistry::registerType()
         if (it != m_types.end())
         {
             const TypeInfo& existing = it->second;
-            // size/alignment が一致しない場合、別の型が同じ TypeId を持っている（衝突）
-            // typeId<T>() の連番採番と手動登録 registerType(id,...) が衝突した可能性がある
+            // 既存エントリがある場合、size/alignment/name を全て検証して
+            // typeId<T>() と手動登録 registerType(id,...) との衝突を確実に検出する。
             const bool sizeMatch      = (existing.size == sizeof(T));
             const bool alignmentMatch = (existing.alignment == alignof(T));
-            assert(sizeMatch && alignmentMatch
-                   && "TypeRegistry: typeId 衝突を検出（手動登録との衝突の可能性）");
-            if (!sizeMatch || !alignmentMatch)
+            // name はコストが高いため本来は遅延生成したいが、
+            // 衝突検出のためにここでも生成して照合する。
+            Name name                 = detail::typeNameFromFuncsig(__FUNCSIG__);
+            const bool nameMatch      = (existing.name == name);
+            assert(sizeMatch && alignmentMatch && nameMatch
+                   && "TypeRegistry: typeId 衝突を検出（手動登録との衝突の可能性 / name 不一致）");
+            if (!sizeMatch || !alignmentMatch || !nameMatch)
             {
                 std::fputs("TypeRegistry: typeId 衝突を検出したため異常終了します\n", stderr);
                 std::abort();
