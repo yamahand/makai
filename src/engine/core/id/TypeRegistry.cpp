@@ -151,7 +151,8 @@ TypeId TypeRegistry::registerType(
             const auto existingSize      = existing.size;
             const auto existingAlignment = existing.alignment;
             const auto newName           = name;
-
+
+
             // TypeRegistry のロックを保持したまま Name::toString() を呼ぶと
             // NameTable 側のロック取得との順序逆転でデッドロックする可能性があるため、
             // ここで明示的にロックを解放してから文字列化とログ出力を行う。
@@ -169,15 +170,15 @@ TypeId TypeRegistry::registerType(
                 id,
                 existingNameCStr ? existingNameCStr : "(unregistered)", existingSize, existingAlignment,
                 newNameCStr ? newNameCStr : "(unregistered)", size, alignment);
+
+                return 0;
         }
         else
         {
             // 同一メタデータでの再登録は冪等として扱う
             CORE_WARN("TypeRegistry: TypeId={} は既に同一メタデータで登録済み — 再登録要求を無視します", id);
+            return id;
         }
-
-        // いずれの場合も既存の登録を維持する
-        return id;
     }
 
     TypeInfo info;
