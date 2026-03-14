@@ -117,6 +117,11 @@ TypeId TypeRegistry::registerType()
     // typeId<T>() は C++11 以降の static local 保証でスレッドセーフ
     const TypeId id = typeId<T>();
 
+    // __FUNCSIG__ から型名を抽出して NameTable に登録する（MSVC専用）
+    // 型名生成は TypeRegistry 自体の状態に依存しないため、ロック取得前に行うことで
+    // m_mutex の保持時間を短縮し、スレッド間の競合を減らす。
+    Name name = detail::typeNameFromFuncsig(__FUNCSIG__);
+
     // 共有ロックで既登録チェック（読み取りのみ）
     {
         std::shared_lock lock(m_mutex);
@@ -124,13 +129,14 @@ TypeId TypeRegistry::registerType()
         if (it != m_types.end())
         {
             const TypeInfo& existing = it->second;
-            // size/alignment が一致しない場合、別の型が同じ TypeId を持っている（衝突）
+            // size/alignment/name が一致しない場合、別の型が同じ TypeId を持っている（衝突）
             // typeId<T>() の連番採番と手動登録 registerType(id,...) が衝突した可能性がある
             const bool sizeMatch      = (existing.size == sizeof(T));
             const bool alignmentMatch = (existing.alignment == alignof(T));
-            assert(sizeMatch && alignmentMatch
-                   && "TypeRegistry: typeId 衝突を検出（手動登録との衝突の可能性）");
-            if (!sizeMatch || !alignmentMatch)
+            const bool nameMatch      = (existing.name == name);
+            assert(sizeMatch && alignmentMatch && nameMatch
+                   && "TypeRegistry: typeId 衝突を検出（手動登録との衝突の可能性 / name 不一致）");
+            if (!sizeMatch || !alignmentMatch || !nameMatch)
             {
                 std::fputs("TypeRegistry: typeId 衝突を検出したため異常終了します\n", stderr);
                 std::abort();
@@ -138,11 +144,6 @@ TypeId TypeRegistry::registerType()
             return id;
         }
     }
-
-    // __FUNCSIG__ から型名を抽出して NameTable に登録する（MSVC専用）
-    // 型名生成は TypeRegistry 自体の状態に依存しないため、排他ロック取得前に行うことで
-    // m_mutex の保持時間を短縮し、スレッド間の競合を減らす。
-    Name name = detail::typeNameFromFuncsig(__FUNCSIG__);
 
     // double-checked locking: 排他ロックで再確認してから登録
     std::unique_lock lock(m_mutex);
@@ -153,9 +154,10 @@ TypeId TypeRegistry::registerType()
             const TypeInfo& existing = it->second;
             const bool sizeMatch      = (existing.size == sizeof(T));
             const bool alignmentMatch = (existing.alignment == alignof(T));
-            assert(sizeMatch && alignmentMatch
-                   && "TypeRegistry: typeId 衝突を検出（手動登録との衝突の可能性）");
-            if (!sizeMatch || !alignmentMatch)
+            const bool nameMatch      = (existing.name == name);
+            assert(sizeMatch && alignmentMatch && nameMatch
+                   && "TypeRegistry: typeId 衝突を検出（手動登録との衝突の可能性 / name 不一致）");
+            if (!sizeMatch || !alignmentMatch || !nameMatch)
             {
                 std::fputs("TypeRegistry: typeId 衝突を検出したため異常終了します\n", stderr);
                 std::abort();
