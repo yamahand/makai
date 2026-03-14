@@ -120,8 +120,21 @@ TypeId TypeRegistry::registerType()
     // 共有ロックで既登録チェック（読み取りのみ）
     {
         std::shared_lock lock(m_mutex);
-        if (m_types.contains(id))
+        auto it = m_types.find(id);
+        if (it != m_types.end())
         {
+            const TypeInfo& existing = it->second;
+            // size/alignment が一致しない場合、別の型が同じ TypeId を持っている（衝突）
+            // typeId<T>() の連番採番と手動登録 registerType(id,...) が衝突した可能性がある
+            const bool sizeMatch      = (existing.size == sizeof(T));
+            const bool alignmentMatch = (existing.alignment == alignof(T));
+            assert(sizeMatch && alignmentMatch
+                   && "TypeRegistry: typeId 衝突を検出（手動登録との衝突の可能性）");
+            if (!sizeMatch || !alignmentMatch)
+            {
+                std::fputs("TypeRegistry: typeId 衝突を検出したため異常終了します\n", stderr);
+                std::abort();
+            }
             return id;
         }
     }
@@ -133,9 +146,22 @@ TypeId TypeRegistry::registerType()
 
     // double-checked locking: 排他ロックで再確認してから登録
     std::unique_lock lock(m_mutex);
-    if (m_types.contains(id))
     {
-        return id;
+        auto it = m_types.find(id);
+        if (it != m_types.end())
+        {
+            const TypeInfo& existing = it->second;
+            const bool sizeMatch      = (existing.size == sizeof(T));
+            const bool alignmentMatch = (existing.alignment == alignof(T));
+            assert(sizeMatch && alignmentMatch
+                   && "TypeRegistry: typeId 衝突を検出（手動登録との衝突の可能性）");
+            if (!sizeMatch || !alignmentMatch)
+            {
+                std::fputs("TypeRegistry: typeId 衝突を検出したため異常終了します\n", stderr);
+                std::abort();
+            }
+            return id;
+        }
     }
 
     TypeInfo info;
