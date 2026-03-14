@@ -146,8 +146,19 @@ TypeId TypeRegistry::registerType(
 
         if (!sameName || !sameSize || !sameAlignment)
         {
-            const char* existingNameCStr = existing.name.toString();
-            const char* newNameCStr      = name.toString();
+            // ログ出力に必要な情報を退避してからロックを解放する
+            const auto existingName      = existing.name;
+            const auto existingSize      = existing.size;
+            const auto existingAlignment = existing.alignment;
+            const auto newName           = name;
+
+            // TypeRegistry のロックを保持したまま Name::toString() を呼ぶと
+            // NameTable 側のロック取得との順序逆転でデッドロックする可能性があるため、
+            // ここで明示的にロックを解放してから文字列化とログ出力を行う。
+            lock.unlock();
+
+            const char* existingNameCStr = existingName.toString();
+            const char* newNameCStr      = newName.toString();
 
             // 同一 TypeId に対して異なるメタデータが登録されようとしているのはバグ
             assert(false && "TypeRegistry: 同一 TypeId に異なるメタデータを再登録しようとした");
@@ -156,7 +167,7 @@ TypeId TypeRegistry::registerType(
                 "  既存: Name={}, size={}, alignment={}\n"
                 "  新規: Name={}, size={}, alignment={}",
                 id,
-                existingNameCStr ? existingNameCStr : "(unregistered)", existing.size, existing.alignment,
+                existingNameCStr ? existingNameCStr : "(unregistered)", existingSize, existingAlignment,
                 newNameCStr ? newNameCStr : "(unregistered)", size, alignment);
         }
         else
