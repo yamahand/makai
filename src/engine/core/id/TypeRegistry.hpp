@@ -66,9 +66,12 @@ public:
     //     Release: CORE_ERROR ログを出力し、0 を返す
     //   ※ 呼び出し側は戻り値 0 を「登録失敗」として扱うこと
     //
-    // 既に登録済みの TypeId を渡した場合:
-    //   Debug: assert で停止
-    //   Release: CORE_WARN ログを出力し、既存の TypeId を返す
+    // 既に登録済みの TypeId を渡した場合の挙動:
+    //   - 登録済みのメタデータ（Name / size / alignment）と完全に一致する場合:
+    //       Debug/Release: CORE_WARN ログを出力し、既存の TypeId を返す（再登録は冪等）
+    //   - 登録済みのメタデータと異なる場合:
+    //       Debug: assert で停止（継続した場合は CORE_ERROR ログを出力し、0 を返す）
+    //       Release: CORE_ERROR ログを出力し、0 を返す
     //
     // Name が既に別の TypeId に紐づいている場合（Name 衝突）の挙動:
     //   Debug: assert で停止
