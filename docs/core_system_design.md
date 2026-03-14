@@ -229,12 +229,14 @@ TypeId registerType();
 # 型取得
 
 ```cpp
+// 以下は擬似コード（実際の宣言は TypeRegistry.hpp を参照）
 TypeInfo* findType(TypeId id);
 ```
 
 Name から取得
 
 ```cpp
+// 以下は擬似コード（実際の宣言は TypeRegistry.hpp を参照）
 TypeInfo* findType(Name name);
 ```
 
