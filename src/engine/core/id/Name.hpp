@@ -37,6 +37,11 @@ public:
     constexpr bool isValid() const { return m_id != InvalidStringID; }
     constexpr explicit operator bool() const { return isValid(); }
 
+    // 元の文字列を取得する
+    // 未登録の場合は nullptr を返す
+    // 返されたポインタは、後続の make() 呼び出し後も有効（deque のポインタ安定性による）
+    const char* toString() const;
+
 private:
     StringID m_id;
 };
