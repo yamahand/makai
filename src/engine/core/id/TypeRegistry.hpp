@@ -59,12 +59,14 @@ public:
     // 無効な入力値が渡された場合の挙動:
     //   - id == 0
     //   - name が無効（未初期化など、Name::isValid() が false を返す状態）
+    //   - name が NameTable にインターンされていない（NameTable::exists(name) が false）
     //   - size == 0
     //   - alignment が不正（0 や想定外の値など、実装側で不正と判定される状態）
     //   いずれかに該当する場合は登録を行わず:
     //     Debug: assert で停止（継続した場合は CORE_ERROR ログを出力し、0 を返す）
     //     Release: CORE_ERROR ログを出力し、0 を返す
     //   ※ 呼び出し側は戻り値 0 を「登録失敗」として扱うこと
+    //   ※ name は事前に NameTable にインターン済み（NameTable::exists(name) が true）である必要がある
     //
     // 既に登録済みの TypeId を渡した場合の挙動:
     //   - 登録済みのメタデータ（Name / size / alignment）と完全に一致する場合:
