@@ -26,7 +26,7 @@ inline void debugBreak() {
 }
 
 // Noreturn の失敗ハンドラ（フォーマット済メッセージ）
-// Logger が未初期化の場合のみ BootstrapLogger にフォールバックする
+// Logger::shouldLog の結果に応じて Logger へ出力し、そうでない場合は BootstrapLogger にフォールバックする
 [[noreturn]] inline void fail(LogCategory category, const char* expr, const char* file, int line, std::string_view msg) {
     auto full = std::format("Assertion failed: {} at {}:{}{}", expr, file, line,
                             msg.empty() ? std::string() : std::format(": {}", msg));
@@ -56,7 +56,7 @@ template<typename... Args>
 }
 
 // ensure 用の失敗ハンドラ（ログ出力して続行する。クラッシュしない）
-// Logger が未初期化の場合のみ BootstrapLogger にフォールバックする
+// Logger::shouldLog の結果に応じて Logger へ出力し、そうでない場合は BootstrapLogger にフォールバックする
 inline void ensureFail(LogCategory category, const char* expr, const char* file, int line, std::string_view msg) {
     auto full = std::format("Ensure failed: {} at {}:{}{}", expr, file, line,
                             msg.empty() ? std::string() : std::format(": {}", msg));
