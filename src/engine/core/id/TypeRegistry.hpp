@@ -83,6 +83,7 @@ public:
     //   Debug: assert で停止（継続した場合は CORE_ERROR ログを出力し、0 を返す）
     //   Release: CORE_ERROR ログを出力し、0 を返す
     //   ※ 戻り値 0 の場合、呼び出し側は「登録失敗（Name 衝突）」として扱うこと
+    //   ※ 既存の TypeId を知りたい場合は findType(name) で取得できる
     TypeId registerType(TypeId id, Name name, size_t size, size_t alignment);
     // ------------------------------------------------------------------
 
