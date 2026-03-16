@@ -1,11 +1,13 @@
 #pragma once
 #include "platform/Window.hpp"
+#include "platform/SdlGuard.hpp"
 #include "scene/SceneManager.hpp"
 #include "Config.hpp"
 #include "imgui/ImGuiManager.hpp"
 #include "resource/FontManager.hpp"
 #include "resource/TextureManager.hpp"
 #include "memory/MemoryManager.hpp"
+#include "core/log/LoggerGuard.hpp"
 #include <memory>
 
 namespace mk {
@@ -39,12 +41,18 @@ private:
     void render();
     void renderImGui();
 
+    // --- RAII ガード（宣言順 = 初期化順、デストラクタは逆順で破棄される） ---
+    LoggerGuard                     m_loggerGuard;    // 最初に初期化、最後にシャットダウン
     Config                          m_config;
+    SdlGuard                        m_sdlGuard;       // SDL_Init → デストラクタで SDL_Quit
+
+    // --- SDL 依存リソース（破棄順序: 下→上） ---
     std::unique_ptr<Window>         m_window;
     std::unique_ptr<ImGuiManager>   m_imguiManager;
-    std::unique_ptr<SceneManager>   m_sceneManager;
     std::unique_ptr<FontManager>    m_fontManager;
     std::unique_ptr<TextureManager> m_textureManager;
+    std::unique_ptr<SceneManager>   m_sceneManager;
+
     bool                            m_running = false;
     bool                            m_initialized = false;  // init() 呼び出し済みフラグ
 };

@@ -7,78 +7,47 @@
 
 namespace mk {
 
-Game::Game() {
-    // ロガーを最初に初期化（初期化失敗は std::runtime_error に変換して伝える）
-    try {
-        Logger::init();
-    } catch (const std::exception& e) {
-        throw std::runtime_error(std::string("Logger initialization failed: ") + e.what());
+Game::Game()
+    : m_loggerGuard()                              // Logger::init() — 例外時は runApp まで伝搬
+    , m_config(Config::load("config.json"))         // 設定ファイル読み込み
+    , m_sdlGuard(SDL_INIT_VIDEO | SDL_INIT_AUDIO)   // SDL_Init — 例外時は m_loggerGuard が破棄される
+{
+    // メモリマネージャーを初期化（マスターバッファを確保）
+    if (!memory::MemoryManager::init(m_config.memory)) {
+        throw std::runtime_error("MemoryManager initialization failed");
     }
 
-    // Logger 初期化以降の例外では Logger::shutdown() を確実に呼ぶ
-    try {
-        m_config = Config::load("config.json");
+    // SDL 依存リソースの生成
+    // unique_ptr は初期値 nullptr なので、途中で例外が発生しても
+    // 構築済みメンバーのデストラクタが逆順で正しく呼ばれる
+    m_window = std::make_unique<Window>(
+        m_config.window.title,
+        m_config.window.width,
+        m_config.window.height
+    );
 
-        // メモリマネージャーを最初に初期化（マスターバッファを確保）
-        if (!memory::MemoryManager::init(m_config.memory)) {
-            throw std::runtime_error("MemoryManager initialization failed");
-        }
+    m_imguiManager = std::make_unique<ImGuiManager>(
+        m_window->getSDLWindow(),
+        m_window->getRenderer(),
+        m_config.defaultFont
+    );
 
-        if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
-            throw std::runtime_error(std::string("SDL_Init failed: ") + SDL_GetError());
-        }
+    m_fontManager = std::make_unique<FontManager>();
 
-        // SDL_Init 成功後にコンストラクタが中断した場合でも SDL_Quit() を確実に呼ぶ。
-        // コンストラクタが例外で中断すると Game::~Game() は呼ばれないため、
-        // SDL 依存メンバーを正しい順序で破棄してから SDL_Quit() するスコープガードを設ける。
-        try {
-            // 設定からウィンドウを生成
-            m_window = std::make_unique<Window>(
-                m_config.window.title,
-                m_config.window.width,
-                m_config.window.height
-            );
+    m_textureManager = std::make_unique<TextureManager>(m_window->getRenderer());
 
-            // ImGui を初期化
-            m_imguiManager = std::make_unique<ImGuiManager>(
-                m_window->getSDLWindow(),
-                m_window->getRenderer(),
-                m_config.defaultFont
-            );
+    m_sceneManager = std::make_unique<SceneManager>();
 
-            // TextureManager を初期化
-            m_textureManager = std::make_unique<TextureManager>(m_window->getRenderer());
+    // 設定からフォントを読み込む
+    m_fontManager->loadFont("default",
+                           m_config.defaultFont.path,
+                           m_config.defaultFont.size);
+    m_fontManager->loadFont("large",
+                           m_config.largeFont.path,
+                           m_config.largeFont.size);
 
-            // SceneManager を初期化
-            m_sceneManager = std::make_unique<SceneManager>();
-
-            // FontManager を初期化
-            m_fontManager = std::make_unique<FontManager>();
-
-            // 設定からフォントを読み込む
-            m_fontManager->loadFont("default",
-                                   m_config.defaultFont.path,
-                                   m_config.defaultFont.size);
-            m_fontManager->loadFont("large",
-                                   m_config.largeFont.path,
-                                   m_config.largeFont.size);
-
-            // テクスチャを読み込む
-            m_textureManager->loadTexture("test", "assets/textures/CustomUVChecker_byValle_1K.png");
-        } catch (...) {
-            // ~Game() と同じ順序で SDL 依存メンバーを破棄してから SDL_Quit()
-            m_sceneManager.reset();
-            m_textureManager.reset();
-            m_imguiManager.reset();
-            m_fontManager.reset();
-            m_window.reset();
-            SDL_Quit();
-            throw;
-        }
-    } catch (...) {
-        Logger::shutdown();
-        throw;
-    }
+    // テクスチャを読み込む
+    m_textureManager->loadTexture("test", "assets/textures/CustomUVChecker_byValle_1K.png");
 }
 
 void Game::init() {
@@ -90,27 +59,15 @@ void Game::init() {
     // 再入を防ぐため、onInit() を呼ぶ前に初期化済みフラグを立てる
     m_initialized = true;
 
-    try {
-        // 最初のシーンをセット（サブクラスの onInit() で実行される）
-        onInit();
-        m_sceneManager->applyPendingChanges();
-    } catch (...) {
-        // 初期化中に例外が発生した場合は、シーンマネージャーの状態が不定となるため
-        // 再初期化は不可とし、m_initialized は true のままにしておく
-        throw;
-    }
+    // 最初のシーンをセット（サブクラスの onInit() で実行される）
+    onInit();
+    m_sceneManager->applyPendingChanges();
 }
 
 Game::~Game() {
-    Logger::shutdown();
-    // SDL/SDL_ttf に依存するメンバーを明示的に先に破棄してから SDL_Quit() を呼ぶ
-    // 破棄順序: シーン → テクスチャ → ImGui → フォント（TTF_Quit） → ウィンドウ → SDL_Quit
-    m_sceneManager.reset();
-    m_textureManager.reset();
-    m_imguiManager.reset();
-    m_fontManager.reset();
-    m_window.reset();
-    SDL_Quit();
+    // メンバーの逆順破棄で以下が自動的に行われる:
+    // m_sceneManager → m_textureManager → m_fontManager → m_imguiManager → m_window
+    // → ~SdlGuard(SDL_Quit) → m_config → ~LoggerGuard(Logger::shutdown)
 }
 
 void Game::run() {

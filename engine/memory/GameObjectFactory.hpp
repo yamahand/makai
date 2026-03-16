@@ -18,7 +18,7 @@ public:
     /// オブジェクトを生成する
     /// @tparam T オブジェクトの型（PoolAllocatorに登録済みである必要がある）
     /// @param args コンストラクタ引数
-    /// @return 生成されたオブジェクトへのポインタ（失敗時はnullptr）
+    /// @return 生成されたオブジェクトへのポインタ（プール枯渇時はnullptr、コンストラクタ例外は再送出）
     template<typename T, typename... Args>
     static T* create(Args&&... args) {
         auto& pool = MemoryManager::instance().getPool<T>();
@@ -32,15 +32,13 @@ public:
         }
 
         // placement newでコンストラクタを呼ぶ
+        // コンストラクタが例外を投げた場合はプールを返却してから再送出する
         try {
             new (ptr) T(std::forward<Args>(args)...);
         }
-        catch (const std::exception& e) {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                        "GameObjectFactory: Constructor exception for %s: %s",
-                        typeid(T).name(), e.what());
+        catch (...) {
             pool.deallocate(ptr);
-            return nullptr;
+            throw;
         }
 
         #ifdef DEBUG_MEMORY_VERBOSE

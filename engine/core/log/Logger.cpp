@@ -86,6 +86,38 @@ bool s_initialized = false;
 // shutdown() で元の値に戻すために使用する。
 UINT s_prevOutputCP = 0;
 UINT s_prevInputCP  = 0;
+
+// コンソールコードページの RAII ガード
+// 初期化成功時に commit() を呼ぶとデストラクタでの復元を抑止する
+class CodePageGuard {
+public:
+    CodePageGuard()
+        : m_prevOutputCP(::GetConsoleOutputCP())
+        , m_prevInputCP(::GetConsoleCP())
+        , m_committed(false)
+    {
+        ::SetConsoleOutputCP(CP_UTF8);
+        ::SetConsoleCP(CP_UTF8);
+    }
+    ~CodePageGuard() {
+        if (!m_committed) {
+            ::SetConsoleOutputCP(m_prevOutputCP);
+            ::SetConsoleCP(m_prevInputCP);
+        }
+    }
+    // 初期化成功時に呼ぶ。復元値を保存し、デストラクタでの復元を抑止する
+    void commit(UINT& outPrevOutput, UINT& outPrevInput) {
+        outPrevOutput = m_prevOutputCP;
+        outPrevInput  = m_prevInputCP;
+        m_committed = true;
+    }
+    CodePageGuard(const CodePageGuard&) = delete;
+    CodePageGuard& operator=(const CodePageGuard&) = delete;
+private:
+    UINT m_prevOutputCP;
+    UINT m_prevInputCP;
+    bool m_committed;
+};
 #endif
 
 // spdlog レベルへの変換
@@ -128,49 +160,40 @@ void Logger::init(std::string_view logFile) {
     if (s_initialized) return;
 
 #ifdef _WIN32
-    // 元のコードページを保存してから UTF-8 に切り替える。
-    // 他プロセスやユーザー操作への副作用を最小化するため、
-    // shutdown() で元の値を復元する。
-    s_prevOutputCP = ::GetConsoleOutputCP();
-    s_prevInputCP  = ::GetConsoleCP();
-    ::SetConsoleOutputCP(CP_UTF8);
-    ::SetConsoleCP(CP_UTF8);
+    // コードページを UTF-8 に切り替える。例外時は CodePageGuard のデストラクタで自動復元される
+    CodePageGuard cpGuard;
 #endif
 
-    // コードページ切り替え後に例外が発生した場合は catch で復元する
-    try {
-        // 共有シンク（コンソール + ファイル）
-        auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-        consoleSink->set_level(spdlog::level::trace);
+    // 共有シンク（コンソール + ファイル）
+    auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    consoleSink->set_level(spdlog::level::trace);
 
-        auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
-            std::string(logFile), /*truncate=*/true);
-        fileSink->set_level(spdlog::level::trace);
+    auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
+        std::string(logFile), /*truncate=*/true);
+    fileSink->set_level(spdlog::level::trace);
 
-        std::vector<spdlog::sink_ptr> sinks{ consoleSink, fileSink };
+    std::vector<spdlog::sink_ptr> sinks{ consoleSink, fileSink };
 
 #ifdef _WIN32
-        // windowsのときはVisual Studio用のシンクを追加する
-        auto msvcSink = std::make_shared<mk::msvc_sink_mt>();
-        msvcSink->set_level(spdlog::level::trace);
-        sinks.push_back(msvcSink);
+    // windowsのときはVisual Studio用のシンクを追加する
+    auto msvcSink = std::make_shared<mk::msvc_sink_mt>();
+    msvcSink->set_level(spdlog::level::trace);
+    sinks.push_back(msvcSink);
 #endif
 
-        // 各カテゴリロガーを生成
-        for (std::size_t i = 0; i < kCategoryCount; ++i) {
-            s_loggers[i] = createCategoryLogger(kCategoryNames[i], sinks);
-        }
-
-        s_initialized = true;
-        s_loggers[static_cast<std::size_t>(LogCategory::Core)]->info("Logger initialized");
-    } catch (...) {
-#ifdef _WIN32
-        // 初期化失敗時はコードページを元の値に戻してから再スロー
-        ::SetConsoleOutputCP(s_prevOutputCP);
-        ::SetConsoleCP(s_prevInputCP);
-#endif
-        throw;
+    // 各カテゴリロガーを生成
+    for (std::size_t i = 0; i < kCategoryCount; ++i) {
+        s_loggers[i] = createCategoryLogger(kCategoryNames[i], sinks);
     }
+
+    s_initialized = true;
+    s_loggers[static_cast<std::size_t>(LogCategory::Core)]->info("Logger initialized");
+
+#ifdef _WIN32
+    // 初期化成功: コードページの復元値を記録し、デストラクタでの復元を抑止する
+    // ※ ログ出力より後に commit することで、シンク例外時もコードページが復元される
+    cpGuard.commit(s_prevOutputCP, s_prevInputCP);
+#endif
 }
 
 // ---------------------------------------------------------------------------
