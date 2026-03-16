@@ -148,17 +148,17 @@ foreach(_target IN ITEMS imgui_sdl3)
 endforeach()
 
 # エンジンライブラリ（SDL3・ImGui などの基盤機能）
-add_subdirectory(src/engine)
+add_subdirectory(engine)
 
 # ゲーム実行ファイル（game/ + main.cpp）
 file(GLOB_RECURSE GAME_SOURCES
-    "src/game/*.cpp"
-    "src/game/*.hpp"
-    "src/main.cpp"
+    "${CMAKE_SOURCE_DIR}/game/*.cpp"
+    "${CMAKE_SOURCE_DIR}/game/*.hpp"
 )
+list(APPEND GAME_SOURCES "${CMAKE_SOURCE_DIR}/main.cpp")
 
 # Visual Studio フィルター（ディレクトリ構造を反映）
-source_group(TREE ${CMAKE_SOURCE_DIR}/src PREFIX "src" FILES ${GAME_SOURCES})
+source_group(TREE ${CMAKE_SOURCE_DIR} FILES ${GAME_SOURCES})
 
 add_executable(${PROJECT_NAME} ${GAME_SOURCES})
 

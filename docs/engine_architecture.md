@@ -14,24 +14,25 @@
 
 # レイヤー構造
 
-エンジンは次のレイヤーで構成します。
+エンジンは次のレイヤーで構成します（ピラミッド構造）。
 
 ```
-Game
- ↑
-Engine
- ↑
-Renderer
- ↑
-Platform
- ↑
-Core
+        Game
+          ↓
+        Engine
+       ↙    ↘
+  Renderer  Platform
+       ↘    ↙
+        Core
 ```
 
-依存関係は **下方向のみ許可**されます。
+依存関係は **下方向のみ許可**されます。各レイヤーは自分より下位のレイヤーすべてに依存できます。
 
 ```
-Game → Engine → Renderer → Platform → Core
+Game     → Engine, Renderer, Platform, Core
+Engine   → Renderer, Platform, Core
+Renderer → Platform, Core
+Platform → Core
 ```
 
 逆方向の依存は禁止します。
@@ -231,56 +232,69 @@ GameScene
 
 ルール
 
-* Engineを使用
-* Renderer直接使用は可能だが基本は避ける
+* Engineを使用可能
+* Rendererを使用可能（ただし基本はEngine経由を推奨）
+* Platformを使用可能
+* Coreを使用可能
 
 ---
 
 # 依存関係ルール
 
-許可される依存
+許可される依存（自分より下位のレイヤーすべて）
 
 ```
-Game → Engine
-Engine → Renderer
-Renderer → Platform
+Game     → Engine, Renderer, Platform, Core
+Engine   → Renderer, Platform, Core
+Renderer → Platform, Core
 Platform → Core
 ```
 
-禁止される依存
+禁止される依存（上方向への依存）
 
 ```
-Core → Platform
-Core → Renderer
-Renderer → Engine
-Engine → Game
+Core     → Platform, Renderer, Engine, Game
+Platform → Renderer, Engine, Game
+Renderer → Engine, Game
+Engine   → Game
 ```
 
 ---
 
 # モジュール構造
 
-推奨ディレクトリ構造
+現在のディレクトリ構造（プロジェクトルート基準）
 
 ```
-engine/
-    core/
-    platform/
-    renderer/
-    engine/
-    game/
+makai/
+ ├ engine/                  ← エンジン静的ライブラリ
+ │  ├ core/
+ │  │  ├ id/               ← StringId, TypeId, TypeRegistry（Core層）
+ │  │  ├ handle/           ← Handle, HandlePool（Core層）
+ │  │  ├ log/              ← Logger, Assert, msvc_sink（Core層）
+ │  │  ├ math/             ← Math（Core層）
+ │  │  └ time/             ← Timer（Core層）
+ │  ├ memory/              ← MemoryManager, アロケーター群（Core層）
+ │  ├ platform/            ← Window（Platform層）
+ │  ├ scene/               ← Scene, SceneManager（Engine層）
+ │  ├ resource/            ← FontManager, TextureManager（Engine層）
+ │  ├ imgui/               ← ImGuiManager（Engine層）
+ │  ├ objects/             ← GameObject（Engine層）
+ │  ├ states/              ← StateMachine（Engine層）
+ │  ├ Game.hpp/.cpp        ← Game基底クラス（Engine層）
+ │  ├ App.hpp              ← App基底クラス（Engine層）
+ │  ├ Config.hpp/.cpp      ← 設定管理（Engine層）
+ │  └ CMakeLists.txt
+ ├ game/                   ← ゲーム固有コード（Game層）
+ │  ├ scenes/
+ │  ├ objects/
+ │  ├ states/
+ │  └ App.hpp
+ ├ main.cpp
+ └ CMakeLists.txt
 ```
 
-例
-
-```
-engine
- ├ core
- ├ platform
- ├ renderer
- ├ engine
- └ game
-```
+※ Renderer 層は将来的に `engine/renderer/` として追加予定。現在は SDL3_Renderer を直接使用。
 
 ---
 
@@ -400,22 +414,27 @@ AIツールがコードを書く場合は以下を守る。
 
 # まとめ
 
-レイヤー構造
+レイヤー構造（ピラミッド）
 
 ```
-Game
-Engine
-Renderer
-Platform
-Core
+        Game
+          ↓
+        Engine
+       ↙    ↘
+  Renderer  Platform
+       ↘    ↙
+        Core
 ```
 
 依存方向
 
 ```
-Game → Engine → Renderer → Platform → Core
+Game     → Engine, Renderer, Platform, Core
+Engine   → Renderer, Platform, Core
+Renderer → Platform, Core
+Platform → Core
 ```
 
-このルールは **必ず守ること**。
+各レイヤーは自分より下位のレイヤーすべてに依存可能。逆方向は **必ず禁止**。
 
 ---
