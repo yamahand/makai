@@ -18,7 +18,7 @@ public:
     /// オブジェクトを生成する
     /// @tparam T オブジェクトの型（PoolAllocatorに登録済みである必要がある）
     /// @param args コンストラクタ引数
-    /// @return 生成されたオブジェクトへのポインタ（失敗時はnullptr）
+    /// @return 生成されたオブジェクトへのポインタ（プール枯渇時はnullptr、コンストラクタ例外は再送出）
     template<typename T, typename... Args>
     static T* create(Args&&... args) {
         auto& pool = MemoryManager::instance().getPool<T>();

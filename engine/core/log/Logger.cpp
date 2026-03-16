@@ -187,13 +187,13 @@ void Logger::init(std::string_view logFile) {
     }
 
     s_initialized = true;
+    s_loggers[static_cast<std::size_t>(LogCategory::Core)]->info("Logger initialized");
 
 #ifdef _WIN32
     // 初期化成功: コードページの復元値を記録し、デストラクタでの復元を抑止する
+    // ※ ログ出力より後に commit することで、シンク例外時もコードページが復元される
     cpGuard.commit(s_prevOutputCP, s_prevInputCP);
 #endif
-
-    s_loggers[static_cast<std::size_t>(LogCategory::Core)]->info("Logger initialized");
 }
 
 // ---------------------------------------------------------------------------
