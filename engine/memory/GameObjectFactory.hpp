@@ -32,15 +32,13 @@ public:
         }
 
         // placement newでコンストラクタを呼ぶ
+        // コンストラクタが例外を投げた場合はプールを返却してから再送出する
         try {
             new (ptr) T(std::forward<Args>(args)...);
         }
-        catch (const std::exception& e) {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                        "GameObjectFactory: Constructor exception for %s: %s",
-                        typeid(T).name(), e.what());
+        catch (...) {
             pool.deallocate(ptr);
-            return nullptr;
+            throw;
         }
 
         #ifdef DEBUG_MEMORY_VERBOSE
