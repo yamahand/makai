@@ -18,8 +18,8 @@ MemoryManager& MemoryManager::instance() {
 bool MemoryManager::init(const mk::MemoryConfig& config) {
     auto& mgr = instance();
 
-    // 多重初期化を防ぐ（2回目以降は無視する）
-    if (mgr.m_masterBuffer != nullptr) {
+    // 多重初期化を防ぐ（Logger ヒープまたはマスターバッファが確保済みなら初期化済みとみなす）
+    if (mgr.m_loggerBuffer != nullptr || mgr.m_masterBuffer != nullptr) {
         MK_BOOT_WARN("MemoryManager::init が複数回呼ばれました。2回目以降は無視します。");
         return true;
     }
@@ -87,8 +87,17 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
             "MemoryManager: Logger 専用ヒープの確保に失敗 ({} KB)", config.loggerHeapKB));
         return false;
     }
-    mgr.m_loggerResource = std::make_unique<FirstFitMemoryResource>(
-        mgr.m_loggerBuffer, loggerSize);
+    try {
+        mgr.m_loggerResource = std::make_unique<FirstFitMemoryResource>(
+            mgr.m_loggerBuffer, loggerSize);
+    } catch (const std::bad_alloc&) {
+        // make_unique が bad_alloc を投げた場合、Logger バッファを解放して初期化前の状態に戻す
+        std::free(mgr.m_loggerBuffer);
+        mgr.m_loggerBuffer = nullptr;
+        mgr.m_loggerSize   = 0;
+        MK_BOOT_ERROR("MemoryManager: Logger 専用 FreeListMemoryResource の構築に失敗");
+        return false;
+    }
     MK_BOOT_INFO(std::format(
         "MemoryManager: Logger 専用ヒープ {} KB を確保", config.loggerHeapKB));
 
@@ -103,9 +112,20 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
     const size_t buddySizeRaw    = static_cast<size_t>(config.buddyAllocatorMB)       * 1024 * 1024;
     const size_t buddySize       = std::bit_floor(buddySizeRaw);
 
+    // Logger 専用ヒープの巻き戻し（Logger ヒープ確保後の失敗パスで使用）
+    auto rollbackLogger = [&]() {
+        mgr.m_loggerResource.reset();
+        if (mgr.m_loggerBuffer) {
+            std::free(mgr.m_loggerBuffer);
+            mgr.m_loggerBuffer = nullptr;
+        }
+        mgr.m_loggerSize = 0;
+    };
+
     // doubleFrameSize*2 の乗算オーバーフロー検出
     if (doubleFrameSize > (SIZE_MAX / 2)) {
         MK_BOOT_ERROR("MemoryManager: doubleFrameAllocatorMB の 2 倍がオーバーフローします");
+        rollbackLogger();
         return false;
     }
     const size_t doubleFrameTotal = doubleFrameSize * 2;
@@ -115,6 +135,7 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
     // 加算オーバーフロー検出（各項より合計が小さくなった場合に折り返しを検知）
     if (totalSize < frameSize || totalSize < heapSize) {
         MK_BOOT_ERROR("MemoryManager: MemoryConfig の合計サイズがオーバーフローしました");
+        rollbackLogger();
         return false;
     }
 
@@ -125,6 +146,7 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
         MK_BOOT_ERROR(std::format(
             "MemoryManager: マスターバッファの確保に失敗 ({} MB)",
             totalSize / (1024 * 1024)));
+        rollbackLogger();
         return false;
     }
 
@@ -134,6 +156,7 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
 
     // make_unique / emplace は bad_alloc を投げ得る。
     // 例外発生時に masterBuffer リーク＋次回 init 不可を防ぐため try/catch で包む。
+    // Logger 専用ヒープも含めて全リソースを巻き戻す。
     auto rollback = [&]() {
         mgr.m_pagedAllocator.reset();
         mgr.m_buddyAllocator.reset();
@@ -150,6 +173,8 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
         mgr.m_masterBuffer              = nullptr;
         mgr.m_masterSize                = 0;
         mgr.m_subAllocatorReservedBytes = 0;
+        // Logger 専用ヒープも巻き戻す
+        rollbackLogger();
     };
 
     try {

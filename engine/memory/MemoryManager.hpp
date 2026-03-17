@@ -23,7 +23,8 @@ namespace mk::memory {
 /// MemoryManager - メモリアロケーターの中央管理
 ///
 /// シングルトンパターンで、ゲーム全体のメモリ割り当てを管理する。
-/// Game::Game() の先頭で init(config.memory) を呼ぶ必要がある。
+/// Config 読み込み後、Logger::init() より前に init(config.memory) を呼ぶ必要がある。
+/// 通常は MemoryManagerGuard 経由で初期化・シャットダウンされる。
 ///
 /// 起動時に単一のマスターバッファを確保し、各アロケーターに分配する。
 /// （マスターバッファの OS への malloc 呼び出しと、init() 内部の std::make_unique 等による初期化時の一時的な確保を除き、
@@ -41,7 +42,8 @@ public:
     static MemoryManager& instance();
 
     /// マスターバッファを確保してアロケーターを初期化する
-    /// Game::Game() の先頭（他のどの初期化よりも前）に 1 度だけ呼ぶこと
+    /// Config 読み込み後、Logger::init() より前に 1 度だけ呼ぶこと。
+    /// 通常は MemoryManagerGuard 経由で呼ばれる。
     /// @return 成功時 true。失敗時 false（呼び出し側は起動を中止すること）
     static bool init(const mk::MemoryConfig& config);
 
