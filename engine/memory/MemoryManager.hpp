@@ -17,6 +17,7 @@
 #include <optional>
 #include <cstdlib>
 #include <cassert>
+#include <format>
 
 namespace mk::memory {
 
