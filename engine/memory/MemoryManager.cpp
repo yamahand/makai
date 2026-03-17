@@ -81,12 +81,15 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
     // Logger 専用ヒープを確保する（マスターバッファとは独立）
     const size_t loggerSize = static_cast<size_t>(config.loggerHeapKB) * 1024;
     mgr.m_loggerBuffer = std::malloc(loggerSize);
-    mgr.m_loggerSize   = loggerSize;
     if (!mgr.m_loggerBuffer) {
+        // ヒープ確保に失敗した場合はサイズも 0 に戻して初期化前の状態に揃える
+        mgr.m_loggerSize = 0;
         MK_BOOT_ERROR(std::format(
             "MemoryManager: Logger 専用ヒープの確保に失敗 ({} KB)", config.loggerHeapKB));
         return false;
     }
+    // ヒープ確保に成功したのでサイズを反映する
+    mgr.m_loggerSize = loggerSize;
     try {
         mgr.m_loggerResource = std::make_unique<FirstFitMemoryResource>(
             mgr.m_loggerBuffer, loggerSize);
