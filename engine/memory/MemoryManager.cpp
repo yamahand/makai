@@ -1,8 +1,9 @@
 #include "MemoryManager.hpp"
+#include "../core/log/Logger.hpp"
 #include <bit>
 #include <cstdlib>
+#include <format>
 #include <new>
-#include <SDL3/SDL_log.h>
 
 // MemoryManager は 64bit 環境専用（MB→byte 変換で size_t オーバーフローを起こさないための前提）
 static_assert(sizeof(size_t) >= 8, "MemoryManager は 64bit 環境でのみ使用可能です");
@@ -19,8 +20,7 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
 
     // 多重初期化を防ぐ（2回目以降は無視する）
     if (mgr.m_masterBuffer != nullptr) {
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                    "MemoryManager::init が複数回呼ばれました。2回目以降は無視します。");
+        MK_BOOT_WARN("MemoryManager::init が複数回呼ばれました。2回目以降は無視します。");
         return true;
     }
 
@@ -29,13 +29,21 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
         config.heapAllocatorMB  <= 0 || config.doubleFrameAllocatorMB <= 0 ||
         config.stackAllocatorMB <= 0 || config.buddyAllocatorMB <= 0 ||
         config.pagedAllocatorPageKB <= 0) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "MemoryManager: MemoryConfig に無効な値が含まれています "
-                     "(frame=%d, doubleFrame=%d, scene=%d, heap=%d, stack=%d, buddy=%d, pagedPageKB=%d)",
-                     config.frameAllocatorMB, config.doubleFrameAllocatorMB,
-                     config.sceneAllocatorMB, config.heapAllocatorMB,
-                     config.stackAllocatorMB, config.buddyAllocatorMB,
-                     config.pagedAllocatorPageKB);
+        MK_BOOT_ERROR(std::format(
+            "MemoryManager: MemoryConfig に無効な値が含まれています "
+            "(frame={}, doubleFrame={}, scene={}, heap={}, stack={}, buddy={}, pagedPageKB={})",
+            config.frameAllocatorMB, config.doubleFrameAllocatorMB,
+            config.sceneAllocatorMB, config.heapAllocatorMB,
+            config.stackAllocatorMB, config.buddyAllocatorMB,
+            config.pagedAllocatorPageKB));
+        return false;
+    }
+
+    // loggerHeapKB の検証
+    if (config.loggerHeapKB <= 0) {
+        MK_BOOT_ERROR(std::format(
+            "MemoryManager: loggerHeapKB に無効な値が指定されています ({})",
+            config.loggerHeapKB));
         return false;
     }
 
@@ -51,24 +59,38 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
         config.sceneAllocatorMB       > MAX_ALLOCATOR_MB ||
         config.heapAllocatorMB        > MAX_ALLOCATOR_MB ||
         config.stackAllocatorMB       > MAX_ALLOCATOR_MB) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "MemoryManager: MemoryConfig の値が上限(%d MB)を超えています",
-                     MAX_ALLOCATOR_MB);
+        MK_BOOT_ERROR(std::format(
+            "MemoryManager: MemoryConfig の値が上限({} MB)を超えています",
+            MAX_ALLOCATOR_MB));
         return false;
     }
     if (config.buddyAllocatorMB > MAX_BUDDY_MB) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "MemoryManager: buddyAllocatorMB の値が上限(%d MB)を超えています "
-                     "(BuddyAllocator の最大管理サイズ = 2^MAX_ORDER = 1GB)",
-                     MAX_BUDDY_MB);
+        MK_BOOT_ERROR(std::format(
+            "MemoryManager: buddyAllocatorMB の値が上限({} MB)を超えています "
+            "(BuddyAllocator の最大管理サイズ = 2^MAX_ORDER = 1GB)",
+            MAX_BUDDY_MB));
         return false;
     }
     if (config.pagedAllocatorPageKB > MAX_PAGE_KB) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "MemoryManager: pagedAllocatorPageKB の値が上限(%d KB)を超えています",
-                     MAX_PAGE_KB);
+        MK_BOOT_ERROR(std::format(
+            "MemoryManager: pagedAllocatorPageKB の値が上限({} KB)を超えています",
+            MAX_PAGE_KB));
         return false;
     }
+
+    // Logger 専用ヒープを確保する（マスターバッファとは独立）
+    const size_t loggerSize = static_cast<size_t>(config.loggerHeapKB) * 1024;
+    mgr.m_loggerBuffer = std::malloc(loggerSize);
+    mgr.m_loggerSize   = loggerSize;
+    if (!mgr.m_loggerBuffer) {
+        MK_BOOT_ERROR(std::format(
+            "MemoryManager: Logger 専用ヒープの確保に失敗 ({} KB)", config.loggerHeapKB));
+        return false;
+    }
+    mgr.m_loggerResource = std::make_unique<FirstFitMemoryResource>(
+        mgr.m_loggerBuffer, loggerSize);
+    MK_BOOT_INFO(std::format(
+        "MemoryManager: Logger 専用ヒープ {} KB を確保", config.loggerHeapKB));
 
     const size_t frameSize       = static_cast<size_t>(config.frameAllocatorMB)       * 1024 * 1024;
     const size_t doubleFrameSize = static_cast<size_t>(config.doubleFrameAllocatorMB) * 1024 * 1024;
@@ -83,8 +105,7 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
 
     // doubleFrameSize*2 の乗算オーバーフロー検出
     if (doubleFrameSize > (SIZE_MAX / 2)) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "MemoryManager: doubleFrameAllocatorMB の 2 倍がオーバーフローします");
+        MK_BOOT_ERROR("MemoryManager: doubleFrameAllocatorMB の 2 倍がオーバーフローします");
         return false;
     }
     const size_t doubleFrameTotal = doubleFrameSize * 2;
@@ -93,8 +114,7 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
 
     // 加算オーバーフロー検出（各項より合計が小さくなった場合に折り返しを検知）
     if (totalSize < frameSize || totalSize < heapSize) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "MemoryManager: MemoryConfig の合計サイズがオーバーフローしました");
+        MK_BOOT_ERROR("MemoryManager: MemoryConfig の合計サイズがオーバーフローしました");
         return false;
     }
 
@@ -102,15 +122,15 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
     mgr.m_masterSize   = totalSize;
 
     if (!mgr.m_masterBuffer) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "MemoryManager: マスターバッファの確保に失敗 (%zu MB)",
-                     totalSize / (1024 * 1024));
+        MK_BOOT_ERROR(std::format(
+            "MemoryManager: マスターバッファの確保に失敗 ({} MB)",
+            totalSize / (1024 * 1024)));
         return false;
     }
 
-    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
-                "MemoryManager: マスターバッファ %zu MB を %p に確保",
-                totalSize / (1024 * 1024), mgr.m_masterBuffer);
+    MK_BOOT_INFO(std::format(
+        "MemoryManager: マスターバッファ {} MB を確保",
+        totalSize / (1024 * 1024)));
 
     // make_unique / emplace は bad_alloc を投げ得る。
     // 例外発生時に masterBuffer リーク＋次回 init 不可を防ぐため try/catch で包む。
@@ -151,8 +171,7 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
 
         // いずれかのサブアロケーター用バッファ確保に失敗した場合は即座に失敗として処理する
         if (!frameBuf || !dframe0 || !dframe1 || !sceneBuf || !stackBuf || !buddyBuf) {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                         "MemoryManager: サブアロケーター用バッファの確保に失敗");
+            MK_BOOT_ERROR("MemoryManager: サブアロケーター用バッファの確保に失敗");
             rollback();
             return false;
         }
@@ -175,20 +194,20 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
         // (1) ページサイズがヘッダサイズ以下の場合は PagedAllocator が使用不可状態になるため
         //     コンストラクタを呼ぶ前に事前検証して失敗を明示する
         if (pageSize <= PagedAllocator::kHeaderSize) {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                         "MemoryManager: pagedAllocatorPageKB から計算したページサイズ %zu bytes が"
-                         "ヘッダサイズ %zu bytes 以下です。PagedAllocator を生成できません。",
-                         pageSize, PagedAllocator::kHeaderSize);
+            MK_BOOT_ERROR(std::format(
+                "MemoryManager: pagedAllocatorPageKB から計算したページサイズ {} bytes が"
+                "ヘッダサイズ {} bytes 以下です。PagedAllocator を生成できません。",
+                pageSize, PagedAllocator::kHeaderSize));
             rollback();
             return false;
         }
 
         const size_t remainingBytes = totalSize - mgr.m_subAllocatorReservedBytes;
         if (pageSize > remainingBytes) {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                         "MemoryManager: PagedAllocator のページサイズ %zu bytes が"
-                         "残余ヒープ %zu bytes を超えています",
-                         pageSize, remainingBytes);
+            MK_BOOT_ERROR(std::format(
+                "MemoryManager: PagedAllocator のページサイズ {} bytes が"
+                "残余ヒープ {} bytes を超えています",
+                pageSize, remainingBytes));
             rollback();
             return false;
         }
@@ -197,62 +216,87 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
         // (2) コンストラクタ内で初期ページ確保に失敗した場合は getPageCount() == 0 になる。
         //     使用不可状態のまま init() が成功扱いにならないよう確認して失敗時は rollback する。
         if (mgr.m_pagedAllocator->getPageCount() == 0) {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                         "MemoryManager: PagedAllocator の初期化に失敗しました "
-                         "(初期ページの確保に失敗)");
+            MK_BOOT_ERROR("MemoryManager: PagedAllocator の初期化に失敗しました "
+                          "(初期ページの確保に失敗)");
             rollback();
             return false;
         }
     } catch (const std::bad_alloc& e) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "MemoryManager: bad_alloc 例外によりリソース確保に失敗: %s", e.what());
+        MK_BOOT_ERROR(std::format(
+            "MemoryManager: bad_alloc 例外によりリソース確保に失敗: {}", e.what()));
         rollback();
         return false;
     }
 
-    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
-                "MemoryManager: サブアロケーター予約 %zu MB / ヒープ残余 %zu MB",
-                mgr.m_subAllocatorReservedBytes / (1024 * 1024),
-                (totalSize - mgr.m_subAllocatorReservedBytes) / (1024 * 1024));
+    MK_BOOT_INFO(std::format(
+        "MemoryManager: サブアロケーター予約 {} MB / ヒープ残余 {} MB",
+        mgr.m_subAllocatorReservedBytes / (1024 * 1024),
+        (totalSize - mgr.m_subAllocatorReservedBytes) / (1024 * 1024)));
 
     return true;
 }
 
-MemoryManager::~MemoryManager() {
+void MemoryManager::shutdown() {
+    auto& mgr = instance();
+
+    // 未初期化なら何もしない（二重呼び出しも安全）
+    if (!mgr.m_masterBuffer && !mgr.m_loggerBuffer) return;
+
     // PoolHolderDeleter がマスター FreeList に deallocate するため
     // m_masterResource より先にプールを破棄しなければならない
-    if (m_pools.has_value()) {
-        m_pools->clear();   // 各 PoolHolderDeleter を起動（PoolAllocator + ブロック配列 + PoolHolder 本体を FreeList に返却）
-        m_pools.reset();    // pmr マップのバケット配列も FreeList に返却
+    if (mgr.m_pools.has_value()) {
+        mgr.m_pools->clear();
+        mgr.m_pools.reset();
     }
 
     // PagedAllocator のデストラクタがマスター FreeList に deallocate するため先に破棄する
-    m_pagedAllocator.reset();
+    mgr.m_pagedAllocator.reset();
 
     // サブアロケーターを破棄する（外部バッファなので free は呼ばない）
-    m_frameAllocator.reset();
-    m_doubleFrameAllocator.reset();
-    m_sceneAllocator.reset();
-    m_stackAllocator.reset();
-    m_buddyAllocator.reset();
+    mgr.m_frameAllocator.reset();
+    mgr.m_doubleFrameAllocator.reset();
+    mgr.m_sceneAllocator.reset();
+    mgr.m_stackAllocator.reset();
+    mgr.m_buddyAllocator.reset();
 
-    // マスターリソース自体を破棄する（FreeListMemoryResource は reset 不要、直後に破棄される）
-    // マスター FreeListAllocator のカウンタをクリアしてからリソース自体を破棄する
-    if (m_masterResource) {
-        m_masterResource->reset();
-        m_masterResource.reset();
+    // マスターリソース自体を破棄する
+    if (mgr.m_masterResource) {
+        mgr.m_masterResource->reset();
+        mgr.m_masterResource.reset();
     }
     // マスターバッファを解放する
-    if (m_masterBuffer) {
-        std::free(m_masterBuffer);
-        m_masterBuffer = nullptr;
+    if (mgr.m_masterBuffer) {
+        std::free(mgr.m_masterBuffer);
+        mgr.m_masterBuffer = nullptr;
     }
+    mgr.m_masterSize = 0;
+
+    // Logger 専用ヒープを解放する
+    // （Logger::shutdown() の後に呼ばれることが RAII ガードの破棄順序で保証されている）
+    if (mgr.m_loggerResource) {
+        mgr.m_loggerResource->reset();
+        mgr.m_loggerResource.reset();
+    }
+    if (mgr.m_loggerBuffer) {
+        std::free(mgr.m_loggerBuffer);
+        mgr.m_loggerBuffer = nullptr;
+    }
+    mgr.m_loggerSize = 0;
+
+    mgr.m_subAllocatorReservedBytes = 0;
+    mgr.m_totalFrameAllocations     = 0;
+    mgr.m_totalSceneAllocations     = 0;
+}
+
+MemoryManager::~MemoryManager() {
+    // shutdown() がまだ呼ばれていない場合に備える（二重呼び出しは安全）
+    shutdown();
 }
 
 void MemoryManager::onFrameEnd() {
     // init() 未実行／失敗時はアロケーターが nullptr のためガードする
     if (!m_frameAllocator || !m_doubleFrameAllocator) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "MemoryManager::onFrameEnd: 未初期化のためスキップ");
+        CORE_ERROR("MemoryManager::onFrameEnd: 未初期化のためスキップ");
         return;
     }
 
@@ -267,8 +311,7 @@ void MemoryManager::onFrameEnd() {
 
     #ifdef DEBUG_MEMORY_VERBOSE
     if (usedBytes > 0) {
-        SDL_LogDebug(SDL_LOG_CATEGORY_APPLICATION,
-                    "MemoryManager: Frame allocator reset (used: %zu bytes)", usedBytes);
+        CORE_DEBUG("MemoryManager: Frame allocator reset (used: {} bytes)", usedBytes);
     }
     #endif
 }
@@ -276,7 +319,7 @@ void MemoryManager::onFrameEnd() {
 void MemoryManager::onSceneChange() {
     // init() 未実行／失敗時はアロケーターが nullptr のためガードする
     if (!m_sceneAllocator) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "MemoryManager::onSceneChange: 未初期化のためスキップ");
+        CORE_ERROR("MemoryManager::onSceneChange: 未初期化のためスキップ");
         return;
     }
 
@@ -287,9 +330,8 @@ void MemoryManager::onSceneChange() {
 
     m_sceneAllocator->reset();
 
-    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
-               "MemoryManager: Scene allocator reset (used: %zu bytes, %.2f MB)",
-               usedBytes, usedBytes / (1024.0 * 1024.0));
+    CORE_INFO("MemoryManager: Scene allocator reset (used: {} bytes, {:.2f} MB)",
+              usedBytes, usedBytes / (1024.0 * 1024.0));
 }
 
 MemoryManager::Stats MemoryManager::getStats() const {

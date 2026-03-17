@@ -1,6 +1,7 @@
 #pragma once
 #include <string_view>
 #include <format>
+#include <memory_resource>
 #include <utility>
 
 namespace mk {
@@ -44,7 +45,10 @@ public:
 class Logger {
 public:
     // 初期化（コンソール + ファイル出力、カテゴリロガーを生成）
-    static void init(std::string_view logFile = "makai.log");
+    // @param logFile ログファイルパス
+    // @param memResource Logger 専用のメモリリソース（将来の spdlog 置き換え時に使用）
+    static void init(std::string_view logFile = "makai.log",
+                     std::pmr::memory_resource* memResource = nullptr);
     // シャットダウン（flush して終了）
     static void shutdown();
     // すべてのカテゴリロガーの出力レベルを変更する

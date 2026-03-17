@@ -7,7 +7,7 @@
 #include "FreeListMemoryResource.hpp"
 #include "PoolAllocator.hpp"
 #include "../Config.hpp"
-#include <SDL3/SDL_log.h>
+#include "../core/log/Logger.hpp"
 #include <memory_resource>
 #include <new>
 #include <stdexcept>
@@ -44,6 +44,23 @@ public:
     /// Game::Game() の先頭（他のどの初期化よりも前）に 1 度だけ呼ぶこと
     /// @return 成功時 true。失敗時 false（呼び出し側は起動を中止すること）
     static bool init(const mk::MemoryConfig& config);
+
+    /// 全リソースを解放する（MemoryManagerGuard のデストラクタから呼ばれる）
+    /// Logger::shutdown() の後に呼ぶこと
+    static void shutdown();
+
+    /// Logger 専用の pmr リソースを取得
+    /// Logger::init() から呼ばれる。MemoryManager::init() 後のみ有効。
+    std::pmr::memory_resource* loggerMemoryResource() {
+        assert(m_loggerResource && "MemoryManager::init() が呼ばれていません");
+        return m_loggerResource.get();
+    }
+
+    /// Logger 専用ヒープの FreeListAllocator を取得（StlAllocator 用）
+    FirstFitAllocator& loggerAllocator() {
+        assert(m_loggerResource && "MemoryManager::init() が呼ばれていません");
+        return m_loggerResource->getAllocator();
+    }
 
     /// フレームアロケーターを取得
     /// 毎フレーム終了時にリセットされる
@@ -229,6 +246,11 @@ private:
     /// OS ヒープを使わない PoolHolder スマートポインタ型
     using PoolHolderPtr = std::unique_ptr<IPoolBase, PoolHolderDeleter>;
 
+    // Logger 専用ヒープ（マスターバッファとは独立して確保）
+    std::unique_ptr<FirstFitMemoryResource> m_loggerResource;
+    void*  m_loggerBuffer = nullptr;
+    size_t m_loggerSize   = 0;
+
     // マスターバッファ（起動時に 1 度だけ malloc する）
     void*  m_masterBuffer = nullptr;
     size_t m_masterSize   = 0;
@@ -280,9 +302,8 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
         // (1) ブロック配列をマスター FreeList から確保する
         void* blockBuf = master.allocate(sizeof(Block) * PoolSize, alignof(Block));
         if (!blockBuf) {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                         "MemoryManager::getPool: ブロック配列の確保に失敗 (型: %s, %zu 個)",
-                         typeid(T).name(), PoolSize);
+            CORE_ERROR("MemoryManager::getPool: ブロック配列の確保に失敗 (型: {}, {} 個)",
+                       typeid(T).name(), PoolSize);
             assert(false && "MemoryManager::getPool: ブロック配列の確保に失敗");
             throw std::bad_alloc{};
         }
@@ -293,9 +314,8 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
             alignof(PoolHolder<T, PoolSize>));
         if (!holderBuf) {
             master.deallocate(blockBuf);  // ブロック配列のリーク防止
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                         "MemoryManager::getPool: PoolHolder の確保に失敗 (型: %s)",
-                         typeid(T).name());
+            CORE_ERROR("MemoryManager::getPool: PoolHolder の確保に失敗 (型: {})",
+                       typeid(T).name());
             assert(false && "MemoryManager::getPool: PoolHolder の確保に失敗");
             throw std::bad_alloc{};
         }
@@ -323,9 +343,8 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
     // 既存プールを返す（PoolSize が一致していることを確認する）
     auto* base = it->second.get();
     if (base->poolSize != PoolSize) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "MemoryManager::getPool: PoolSize 不一致 (型: %s, 既存: %zu, 要求: %zu)",
-                     typeid(T).name(), base->poolSize, PoolSize);
+        CORE_ERROR("MemoryManager::getPool: PoolSize 不一致 (型: {}, 既存: {}, 要求: {})",
+                   typeid(T).name(), base->poolSize, PoolSize);
         assert(false && "MemoryManager::getPool: PoolSize mismatch");
         throw std::logic_error("MemoryManager::getPool: PoolSize mismatch");
     }
