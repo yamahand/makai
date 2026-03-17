@@ -101,9 +101,6 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
         MK_BOOT_ERROR("MemoryManager: Logger 専用 FreeListMemoryResource の構築に失敗");
         return false;
     }
-    MK_BOOT_INFO(std::format(
-        "MemoryManager: Logger 専用ヒープ {} KB を確保", config.loggerHeapKB));
-
     const size_t frameSize       = static_cast<size_t>(config.frameAllocatorMB)       * 1024 * 1024;
     const size_t doubleFrameSize = static_cast<size_t>(config.doubleFrameAllocatorMB) * 1024 * 1024;
     const size_t sceneSize       = static_cast<size_t>(config.sceneAllocatorMB)       * 1024 * 1024;
@@ -152,10 +149,6 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
         rollbackLogger();
         return false;
     }
-
-    MK_BOOT_INFO(std::format(
-        "MemoryManager: マスターバッファ {} MB を確保",
-        totalSize / (1024 * 1024)));
 
     // make_unique / emplace は bad_alloc を投げ得る。
     // 例外発生時に masterBuffer リーク＋次回 init 不可を防ぐため try/catch で包む。
@@ -257,7 +250,10 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
     }
 
     MK_BOOT_INFO(std::format(
-        "MemoryManager: サブアロケーター予約 {} MB / ヒープ残余 {} MB",
+        "MemoryManager: 初期化完了 — Logger ヒープ {} KB / マスターバッファ {} MB "
+        "(サブアロケーター予約 {} MB / ヒープ残余 {} MB)",
+        config.loggerHeapKB,
+        totalSize / (1024 * 1024),
         mgr.m_subAllocatorReservedBytes / (1024 * 1024),
         (totalSize - mgr.m_subAllocatorReservedBytes) / (1024 * 1024)));
 
