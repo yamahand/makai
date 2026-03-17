@@ -304,8 +304,9 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
         // (1) ブロック配列をマスター FreeList から確保する
         void* blockBuf = master.allocate(sizeof(Block) * PoolSize, alignof(Block));
         if (!blockBuf) {
-            CORE_ERROR("MemoryManager::getPool: ブロック配列の確保に失敗 (型: {}, {} 個)",
-                       typeid(T).name(), PoolSize);
+            MK_BOOT_ERROR(std::format(
+                "MemoryManager::getPool: ブロック配列の確保に失敗 (型: {}, {} 個)",
+                typeid(T).name(), PoolSize));
             assert(false && "MemoryManager::getPool: ブロック配列の確保に失敗");
             throw std::bad_alloc{};
         }
@@ -316,8 +317,9 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
             alignof(PoolHolder<T, PoolSize>));
         if (!holderBuf) {
             master.deallocate(blockBuf);  // ブロック配列のリーク防止
-            CORE_ERROR("MemoryManager::getPool: PoolHolder の確保に失敗 (型: {})",
-                       typeid(T).name());
+            MK_BOOT_ERROR(std::format(
+                "MemoryManager::getPool: PoolHolder の確保に失敗 (型: {})",
+                typeid(T).name()));
             assert(false && "MemoryManager::getPool: PoolHolder の確保に失敗");
             throw std::bad_alloc{};
         }
@@ -345,8 +347,9 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
     // 既存プールを返す（PoolSize が一致していることを確認する）
     auto* base = it->second.get();
     if (base->poolSize != PoolSize) {
-        CORE_ERROR("MemoryManager::getPool: PoolSize 不一致 (型: {}, 既存: {}, 要求: {})",
-                   typeid(T).name(), base->poolSize, PoolSize);
+        MK_BOOT_ERROR(std::format(
+            "MemoryManager::getPool: PoolSize 不一致 (型: {}, 既存: {}, 要求: {})",
+            typeid(T).name(), base->poolSize, PoolSize));
         assert(false && "MemoryManager::getPool: PoolSize mismatch");
         throw std::logic_error("MemoryManager::getPool: PoolSize mismatch");
     }
