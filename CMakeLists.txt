@@ -140,8 +140,8 @@ target_include_directories(imgui_sdl3 PUBLIC
 
 target_link_libraries(imgui_sdl3 PUBLIC SDL3::SDL3)
 
-# ImGui ターゲットを Visual Studio の "External" フォルダーにまとめる
-foreach(_target IN ITEMS imgui_sdl3)
+# 外部ライブラリのターゲットを Visual Studio の "External" フォルダーにまとめる
+foreach(_target IN ITEMS imgui_sdl3 spdlog)
     if(TARGET ${_target})
         set_target_properties(${_target} PROPERTIES FOLDER "External")
     endif()

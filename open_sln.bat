@@ -1,2 +1,2 @@
 @echo off
-start build\makai.sln
+start build\makai.slnx
