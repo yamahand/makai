@@ -54,6 +54,8 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
     static constexpr int MAX_BUDDY_MB      = 1024;
     // pagedAllocatorPageKB は 1 KB〜1 GB（= 1024*1024 KB）を上限とする
     static constexpr int MAX_PAGE_KB       = 1024 * 1024;
+    // loggerHeapKB は 256 MB (= 256 * 1024 KB) を上限とする（ログ用ヒープとしては十分なサイズ）
+    static constexpr int MAX_LOGGER_HEAP_KB = 256 * 1024;
     if (config.frameAllocatorMB       > MAX_ALLOCATOR_MB ||
         config.doubleFrameAllocatorMB > MAX_ALLOCATOR_MB ||
         config.sceneAllocatorMB       > MAX_ALLOCATOR_MB ||
@@ -62,6 +64,12 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
         MK_BOOT_ERROR(std::format(
             "MemoryManager: MemoryConfig の値が上限({} MB)を超えています",
             MAX_ALLOCATOR_MB));
+        return false;
+    }
+    if (config.loggerHeapKB > MAX_LOGGER_HEAP_KB) {
+        MK_BOOT_ERROR(std::format(
+            "MemoryManager: loggerHeapKB の値が上限({} KB = {} MB)を超えています",
+            MAX_LOGGER_HEAP_KB, MAX_LOGGER_HEAP_KB / 1024));
         return false;
     }
     if (config.buddyAllocatorMB > MAX_BUDDY_MB) {
@@ -140,15 +148,17 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
     }
 
     mgr.m_masterBuffer = std::malloc(totalSize);
-    mgr.m_masterSize   = totalSize;
 
     if (!mgr.m_masterBuffer) {
         MK_BOOT_ERROR(std::format(
             "MemoryManager: マスターバッファの確保に失敗 ({} MB)",
             totalSize / (1024 * 1024)));
         rollbackLogger();
+        mgr.m_masterSize   = 0;
         return false;
     }
+
+    mgr.m_masterSize = totalSize;
 
     // make_unique / emplace は bad_alloc を投げ得る。
     // 例外発生時に masterBuffer リーク＋次回 init 不可を防ぐため try/catch で包む。
@@ -243,8 +253,10 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
             return false;
         }
     } catch (const std::bad_alloc& e) {
-        MK_BOOT_ERROR(std::format(
-            "MemoryManager: bad_alloc 例外によりリソース確保に失敗: {}", e.what()));
+        // メモリ不足時のログ生成でさらに bad_alloc を発生させないよう、
+        // ここでは動的フォーマットを行わず固定文字列のみを出力する。
+        MK_BOOT_ERROR("MemoryManager: bad_alloc 例外によりリソース確保に失敗しました");
+        MK_BOOT_ERROR(e.what());
         rollback();
         return false;
     }
