@@ -10,7 +10,7 @@ class LoggerGuard {
 public:
     /// @param memResource MemoryManager の Logger 専用リソース（nullptr の場合は OS ヒープを使用）
     explicit LoggerGuard(std::pmr::memory_resource* memResource = nullptr) {
-        Logger::init("makai.log", memResource);
+        Logger::init("", memResource);
     }
     ~LoggerGuard() {
         Logger::shutdown();

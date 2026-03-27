@@ -2,6 +2,9 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#include <chrono>
+#include <ctime>
+#include <format>
 #include <iostream>
 #include <array>
 #include <memory>
@@ -162,6 +165,24 @@ void Logger::init(std::string_view logFile, std::pmr::memory_resource* memResour
     // 二重初期化を防ぐ
     if (s_initialized) return;
 
+    // logFile が空のときは現在日時から "makai_YYYYMMDD_HHMMSS.log" を生成する
+    std::string resolvedLogFile;
+    if (logFile.empty()) {
+        auto now = std::chrono::system_clock::now();
+        std::time_t t = std::chrono::system_clock::to_time_t(now);
+        std::tm tm{};
+#ifdef _WIN32
+        localtime_s(&tm, &t);
+#else
+        localtime_r(&t, &tm);
+#endif
+        resolvedLogFile = std::format("makai_{:04}{:02}{:02}_{:02}{:02}{:02}.log",
+            tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+            tm.tm_hour, tm.tm_min, tm.tm_sec);
+    } else {
+        resolvedLogFile = std::string(logFile);
+    }
+
     // Logger 専用メモリリソースを保持する（将来の spdlog 置き換え時に使用）
     s_memResource = memResource;
 
@@ -175,7 +196,7 @@ void Logger::init(std::string_view logFile, std::pmr::memory_resource* memResour
     consoleSink->set_level(spdlog::level::trace);
 
     auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
-        std::string(logFile), /*truncate=*/true);
+        resolvedLogFile, /*truncate=*/true);
     fileSink->set_level(spdlog::level::trace);
 
     std::vector<spdlog::sink_ptr> sinks{ consoleSink, fileSink };
