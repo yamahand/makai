@@ -45,7 +45,10 @@ public:
 class Logger {
 public:
     // 初期化（コンソール + ファイル出力、カテゴリロガーを生成）
-    // @param logFile ログファイルパス
+    // @param logFile ログファイルパス。空文字列（""）を指定した場合は、
+    //                ロガー内部でタイムスタンプ付きのファイル名（例: makai-YYYYMMDD-HHMMSS.log）
+    //                を自動生成して使用する。デフォルト引数 "makai.log" は固定ファイル名であり、
+    //                タイムスタンプ付きファイル名を利用したい場合は明示的に空文字列を渡すこと。
     // @param memResource Logger 専用のメモリリソース（将来の spdlog 置き換え時に使用）
     static void init(std::string_view logFile = "makai.log",
                      std::pmr::memory_resource* memResource = nullptr);
