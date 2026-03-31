@@ -348,9 +348,8 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
     // 既存プールを返す（PoolSize が一致していることを確認する）
     auto* base = it->second.get();
     if (base->poolSize != PoolSize) {
-        MK_BOOT_ERROR(std::format(
-            "MemoryManager::getPool: PoolSize 不一致 (型: {}, 既存: {}, 要求: {})",
-            typeid(T).name(), base->poolSize, PoolSize));
+        // std::format を使用すると、このロジックエラーパスで別の例外が投げられる可能性があるため固定メッセージを使用する
+        MK_BOOT_ERROR("MemoryManager::getPool: PoolSize mismatch (PoolSize 不一致)");
         assert(false && "MemoryManager::getPool: PoolSize mismatch");
         throw std::logic_error("MemoryManager::getPool: PoolSize mismatch");
     }
