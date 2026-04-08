@@ -12,20 +12,28 @@ namespace mk::memory {
 class MemoryManagerGuard {
 public:
     /// Config のメモリ設定を受け取り MemoryManager を初期化する
-    explicit MemoryManagerGuard(const MemoryConfig& memConfig) {
-        if (!MemoryManager::init(memConfig)) {
+    explicit MemoryManagerGuard(const MemoryConfig& memConfig)
+        : m_initializedByThisGuard(MemoryManager::init(memConfig)) {
+        if (!m_initializedByThisGuard) {
             throw std::runtime_error("MemoryManager initialization failed");
         }
     }
 
     ~MemoryManagerGuard() {
-        MemoryManager::shutdown();
+        /// 自分で初期化した場合のみシャットダウンを行う
+        if (m_initializedByThisGuard) {
+            MemoryManager::shutdown();
+        }
     }
 
     MemoryManagerGuard(const MemoryManagerGuard&) = delete;
     MemoryManagerGuard& operator=(const MemoryManagerGuard&) = delete;
     MemoryManagerGuard(MemoryManagerGuard&&) = delete;
     MemoryManagerGuard& operator=(MemoryManagerGuard&&) = delete;
+
+private:
+    /// このガード自身が初期化を成功させたかどうか
+    bool m_initializedByThisGuard{false};
 };
 
 } // namespace mk::memory
