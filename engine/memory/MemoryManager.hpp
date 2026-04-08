@@ -17,7 +17,6 @@
 #include <optional>
 #include <cstdlib>
 #include <cassert>
-#include <format>
 
 namespace mk::memory {
 
@@ -305,9 +304,9 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
         // (1) ブロック配列をマスター FreeList から確保する
         void* blockBuf = master.allocate(sizeof(Block) * PoolSize, alignof(Block));
         if (!blockBuf) {
-            MK_BOOT_ERROR(std::format(
-                "MemoryManager::getPool: ブロック配列の確保に失敗 (型: {}, {} 個)",
-                typeid(T).name(), PoolSize));
+            // OOM 経路で std::format を使うと追加の確保が発生し bad_alloc を隠す可能性があるため固定メッセージを使用する。
+            // getPool() は初期化完了後に呼ばれるため、CORE_ERROR（通常 Logger）で記録する。
+            CORE_ERROR("MemoryManager::getPool: ブロック配列の確保に失敗");
             assert(false && "MemoryManager::getPool: ブロック配列の確保に失敗");
             throw std::bad_alloc{};
         }
@@ -318,9 +317,8 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
             alignof(PoolHolder<T, PoolSize>));
         if (!holderBuf) {
             master.deallocate(blockBuf);  // ブロック配列のリーク防止
-            MK_BOOT_ERROR(std::format(
-                "MemoryManager::getPool: PoolHolder の確保に失敗 (型: {})",
-                typeid(T).name()));
+            // 同上: OOM 経路では固定メッセージのみ使用する
+            CORE_ERROR("MemoryManager::getPool: PoolHolder の確保に失敗");
             assert(false && "MemoryManager::getPool: PoolHolder の確保に失敗");
             throw std::bad_alloc{};
         }
