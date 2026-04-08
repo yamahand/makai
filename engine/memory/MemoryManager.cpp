@@ -92,8 +92,8 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
     if (!mgr.m_loggerBuffer) {
         // ヒープ確保に失敗した場合はサイズも 0 に戻して初期化前の状態に揃える
         mgr.m_loggerSize = 0;
-        MK_BOOT_ERROR(std::format(
-            "MemoryManager: Logger 専用ヒープの確保に失敗 ({} KB)", config.loggerHeapKB));
+        // メモリ逼迫時に std::format が追加の確保で失敗することを避けるため固定メッセージにする
+        MK_BOOT_ERROR("MemoryManager: Logger 専用ヒープの確保に失敗");
         return false;
     }
     // ヒープ確保に成功したのでサイズを反映する
