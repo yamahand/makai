@@ -150,9 +150,8 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
     mgr.m_masterBuffer = std::malloc(totalSize);
 
     if (!mgr.m_masterBuffer) {
-        MK_BOOT_ERROR(std::format(
-            "MemoryManager: マスターバッファの確保に失敗 ({} MB)",
-            totalSize / (1024 * 1024)));
+        // OOM 経路では追加の動的確保を避け、Logger 専用ヒープの巻き戻しを確実に行う
+        MK_BOOT_ERROR("MemoryManager: マスターバッファの確保に失敗しました");
         rollbackLogger();
         mgr.m_masterSize   = 0;
         return false;
