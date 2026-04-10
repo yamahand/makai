@@ -81,9 +81,6 @@ static_assert(kCategoryCount == static_cast<std::size_t>(LogCategory::Game) + 1,
 // カテゴリロガーを保持する配列（spdlog::get() を毎回呼ばない）
 std::array<std::shared_ptr<spdlog::logger>, kCategoryCount> s_loggers;
 
-// Logger 専用のメモリリソース（将来の spdlog 置き換え時に使用）
-std::pmr::memory_resource* s_memResource = nullptr;
-
 // 初期化済みフラグ
 bool s_initialized = false;
 
@@ -183,8 +180,8 @@ void Logger::init(std::string_view logFile, std::pmr::memory_resource* memResour
         resolvedLogFile = std::string(logFile);
     }
 
-    // Logger 専用メモリリソースを保持する（将来の spdlog 置き換え時に使用）
-    s_memResource = memResource;
+    // 現在の実装では Logger 専用メモリリソースを実際の割り当てに利用していないため suppress する
+    (void)memResource;
 
 #ifdef _WIN32
     // コードページを UTF-8 に切り替える。例外時は CodePageGuard のデストラクタで自動復元される
@@ -236,7 +233,6 @@ void Logger::shutdown() {
 
     spdlog::shutdown();
     s_initialized = false;
-    s_memResource = nullptr;
 
 #ifdef _WIN32
     // init() で変更したコードページを元の値に戻す

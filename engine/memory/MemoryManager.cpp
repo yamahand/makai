@@ -87,27 +87,31 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
     }
 
     // Logger 専用ヒープを確保する（マスターバッファとは独立）
+    // Logger 側でまだ実際の割り当てに利用していないため、失敗は致命扱いせず警告のみで継続する
+    mgr.m_loggerBuffer   = nullptr;
+    mgr.m_loggerSize     = 0;
+    mgr.m_loggerResource.reset();
+
     const size_t loggerSize = static_cast<size_t>(config.loggerHeapKB) * 1024;
-    mgr.m_loggerBuffer = std::malloc(loggerSize);
-    if (!mgr.m_loggerBuffer) {
-        // ヒープ確保に失敗した場合はサイズも 0 に戻して初期化前の状態に揃える
-        mgr.m_loggerSize = 0;
-        // メモリ逼迫時に std::format が追加の確保で失敗することを避けるため固定メッセージにする
-        MK_BOOT_ERROR("MemoryManager: Logger 専用ヒープの確保に失敗");
-        return false;
-    }
-    // ヒープ確保に成功したのでサイズを反映する
-    mgr.m_loggerSize = loggerSize;
-    try {
-        mgr.m_loggerResource = std::make_unique<FirstFitMemoryResource>(
-            mgr.m_loggerBuffer, loggerSize);
-    } catch (const std::bad_alloc&) {
-        // make_unique が bad_alloc を投げた場合、Logger バッファを解放して初期化前の状態に戻す
-        std::free(mgr.m_loggerBuffer);
-        mgr.m_loggerBuffer = nullptr;
-        mgr.m_loggerSize   = 0;
-        MK_BOOT_ERROR("MemoryManager: Logger 専用 FreeListMemoryResource の構築に失敗");
-        return false;
+    if (loggerSize > 0) {
+        mgr.m_loggerBuffer = std::malloc(loggerSize);
+        if (!mgr.m_loggerBuffer) {
+            // メモリ逼迫時に std::format が追加の確保で失敗することを避けるため固定メッセージにする
+            MK_BOOT_WARN("MemoryManager: Logger 専用ヒープの確保に失敗しました。専用ヒープなしで継続します");
+        } else {
+            // ヒープ確保に成功したのでサイズを反映する
+            mgr.m_loggerSize = loggerSize;
+            try {
+                mgr.m_loggerResource = std::make_unique<FirstFitMemoryResource>(
+                    mgr.m_loggerBuffer, loggerSize);
+            } catch (const std::bad_alloc&) {
+                // make_unique が bad_alloc を投げた場合、Logger バッファを解放して継続する
+                std::free(mgr.m_loggerBuffer);
+                mgr.m_loggerBuffer = nullptr;
+                mgr.m_loggerSize   = 0;
+                MK_BOOT_WARN("MemoryManager: Logger 専用メモリリソースの構築に失敗しました。専用ヒープなしで継続します");
+            }
+        }
     }
     const size_t frameSize       = static_cast<size_t>(config.frameAllocatorMB)       * 1024 * 1024;
     const size_t doubleFrameSize = static_cast<size_t>(config.doubleFrameAllocatorMB) * 1024 * 1024;
@@ -331,7 +335,8 @@ MemoryManager::~MemoryManager() {
 void MemoryManager::onFrameEnd() {
     // init() 未実行／失敗時はアロケーターが nullptr のためガードする
     if (!m_frameAllocator || !m_doubleFrameAllocator) {
-        CORE_ERROR("MemoryManager::onFrameEnd: 未初期化のためスキップ");
+        // Logger 未初期化状態では CORE_ERROR が出力されないため BootstrapLogger を使用する
+        MK_BOOT_ERROR("MemoryManager::onFrameEnd: 未初期化のためスキップ");
         return;
     }
 
@@ -354,7 +359,8 @@ void MemoryManager::onFrameEnd() {
 void MemoryManager::onSceneChange() {
     // init() 未実行／失敗時はアロケーターが nullptr のためガードする
     if (!m_sceneAllocator) {
-        CORE_ERROR("MemoryManager::onSceneChange: 未初期化のためスキップ");
+        // Logger 未初期化状態では CORE_ERROR が出力されないため BootstrapLogger を使用する
+        MK_BOOT_ERROR("MemoryManager::onSceneChange: 未初期化のためスキップ");
         return;
     }
 
