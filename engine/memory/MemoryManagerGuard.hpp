@@ -15,7 +15,8 @@ public:
     explicit MemoryManagerGuard(const MemoryConfig& memConfig)
         : m_initializedByThisGuard(MemoryManager::init(memConfig)) {
         if (!m_initializedByThisGuard) {
-            throw std::runtime_error("MemoryManager initialization failed");
+            throw std::runtime_error(
+                "MemoryManager の初期化に失敗しました。詳細は BootstrapLogger / ログ出力を参照してください。");
         }
     }
 
