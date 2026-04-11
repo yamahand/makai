@@ -10,8 +10,7 @@ namespace mk {
 Game::Game()
     : m_config(Config::load("config.json"))                         // 設定ファイル読み込み（OS ヒープ使用）
     , m_memoryGuard(m_config.memory)                                // MemoryManager::init() — Config の後
-    , m_loggerGuard(memory::MemoryManager::instance()
-                        .loggerMemoryResource())                    // Logger::init() — MemoryManager の後
+    , m_loggerGuard(nullptr)                                        // Logger::init() — logger リソース未確保時も OS ヒープへフォールバック
     , m_sdlGuard(SDL_INIT_VIDEO | SDL_INIT_AUDIO)                   // SDL_Init — 例外時はガードが逆順で破棄
 {
     // SDL 依存リソースの生成
