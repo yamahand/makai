@@ -1,18 +1,15 @@
 #pragma once
 #include <SDL3/SDL.h>
-#include <stdexcept>
-#include <string>
+#include "../core/log/Assert.hpp"
 
 namespace mk {
 
 // SDL の初期化・終了を RAII で管理するガード
+// 初期化失敗は致命的エラーとして abort する
 class SdlGuard {
 public:
     explicit SdlGuard(SDL_InitFlags flags) {
-        if (!SDL_Init(flags)) {
-            throw std::runtime_error(
-                std::string("SDL_Init failed: ") + SDL_GetError());
-        }
+        MK_VERIFY_MSG(SDL_Init(flags), "SDL_Init failed: {}", SDL_GetError());
     }
     ~SdlGuard() {
         SDL_Quit();

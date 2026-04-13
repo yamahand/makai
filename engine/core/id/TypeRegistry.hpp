@@ -189,28 +189,19 @@ TypeId TypeRegistry::registerType()
     // emplace の戻り値を確認して Name 衝突を検出する
     // Logger マクロはヘッダでも利用可能だが、この層では依存を増やしたくないため利用しない。
     // 衝突は assert と std::abort() によって検出・停止し、致命的な不整合を即座に報告する。
-    // 例外安全: m_nameIndex.emplace が例外を投げた場合は m_types をロールバックする
-    try
+    // 例外無効環境では emplace の失敗（OOM）はランタイムにより abort されるためロールバック不要
+    const bool nameInserted = m_nameIndex.emplace(name.getId(), id).second;
+    if (!nameInserted)
     {
-        const bool nameInserted = m_nameIndex.emplace(name.getId(), id).second;
-        if (!nameInserted)
-        {
-            // m_types をロールバックして両インデックスの整合性を保つ
-            m_types.erase(id);
-            // テンプレート版では typeId<T>() が型ごとに一意なIDを生成する。
-            // 同一 Name で異なる TypeId が衝突した場合は型名ハッシュの衝突であり、
-            // エンジンの根本的な不整合を示すため、Release ビルドでも即座に終了する。
-            // NDEBUG 時には assert が無効化されるため、std::abort() の前に理由を stderr に出力する
-            std::fputs("TypeRegistry: 同一 Name で異なる TypeId の登録を検出したため、異常終了します。\n", stderr);
-            assert(false && "TypeRegistry: 同一 Name で異なる TypeId の登録を検出");
-            std::abort();
-        }
-    }
-    catch (...)
-    {
-        // m_nameIndex.emplace が bad_alloc 等を投げた場合にロールバックして再送出
+        // m_types をロールバックして両インデックスの整合性を保つ
         m_types.erase(id);
-        throw;
+        // テンプレート版では typeId<T>() が型ごとに一意なIDを生成する。
+        // 同一 Name で異なる TypeId が衝突した場合は型名ハッシュの衝突であり、
+        // エンジンの根本的な不整合を示すため、Release ビルドでも即座に終了する。
+        // NDEBUG 時には assert が無効化されるため、std::abort() の前に理由を stderr に出力する
+        std::fputs("TypeRegistry: 同一 Name で異なる TypeId の登録を検出したため、異常終了します。\n", stderr);
+        assert(false && "TypeRegistry: 同一 Name で異なる TypeId の登録を検出");
+        std::abort();
     }
 
     return id;

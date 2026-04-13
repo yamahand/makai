@@ -3,7 +3,7 @@
 #include <bit>
 #include <cstdlib>
 #include <format>
-#include <new>
+#include <new>      // std::nothrow
 
 // MemoryManager は 64bit 環境専用（MB→byte 変換で size_t オーバーフローを起こさないための前提）
 static_assert(sizeof(size_t) >= 8, "MemoryManager は 64bit 環境でのみ使用可能です");
@@ -101,15 +101,16 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
         } else {
             // ヒープ確保に成功したのでサイズを反映する
             mgr.m_loggerSize = loggerSize;
-            try {
-                mgr.m_loggerResource = std::make_unique<FirstFitMemoryResource>(
-                    mgr.m_loggerBuffer, loggerSize);
-            } catch (const std::bad_alloc&) {
-                // make_unique が bad_alloc を投げた場合、Logger バッファを解放して継続する
+            // new(std::nothrow) で例外を使わずに構築する
+            auto* ptr = new(std::nothrow) FirstFitMemoryResource(
+                mgr.m_loggerBuffer, loggerSize);
+            if (!ptr) {
                 std::free(mgr.m_loggerBuffer);
                 mgr.m_loggerBuffer = nullptr;
                 mgr.m_loggerSize   = 0;
                 MK_BOOT_WARN("MemoryManager: Logger 専用メモリリソースの構築に失敗しました。専用ヒープなしで継続します");
+            } else {
+                mgr.m_loggerResource.reset(ptr);
             }
         }
     }
@@ -163,9 +164,9 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
 
     mgr.m_masterSize = totalSize;
 
-    // make_unique / emplace は bad_alloc を投げ得る。
-    // 例外発生時に masterBuffer リーク＋次回 init 不可を防ぐため try/catch で包む。
-    // Logger 専用ヒープも含めて全リソースを巻き戻す。
+    // 例外無効環境: make_unique の内部 new 失敗時は abort される。
+    // ただし構築するオブジェクトは小さなメタデータ（数十バイト）のため OOM リスクは極めて低い。
+    // masterBuffer リーク＋次回 init 不可を防ぐための rollback は検証失敗パスで引き続き使用する。
     auto rollback = [&]() {
         mgr.m_pagedAllocator.reset();
         mgr.m_buddyAllocator.reset();
@@ -186,7 +187,7 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
         rollbackLogger();
     };
 
-    try {
+    {
         // マスター FreeList がバッファ全体を管理する
         mgr.m_masterResource = std::make_unique<FirstFitMemoryResource>(mgr.m_masterBuffer, totalSize);
         auto& master = mgr.m_masterResource->getAllocator();
@@ -255,13 +256,6 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
             rollback();
             return false;
         }
-    } catch (const std::bad_alloc& e) {
-        // メモリ不足時のログ生成でさらに bad_alloc を発生させないよう、
-        // ここでは動的フォーマットを行わず固定文字列のみを出力する。
-        MK_BOOT_ERROR("MemoryManager: bad_alloc 例外によりリソース確保に失敗しました");
-        MK_BOOT_ERROR(e.what());
-        rollback();
-        return false;
     }
 
     MK_BOOT_INFO(std::format(
