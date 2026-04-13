@@ -7,6 +7,7 @@
 #include "resource/FontManager.hpp"
 #include "resource/TextureManager.hpp"
 #include "memory/MemoryManager.hpp"
+#include "memory/MemoryManagerGuard.hpp"
 #include "core/log/LoggerGuard.hpp"
 #include <memory>
 
@@ -42,9 +43,10 @@ private:
     void renderImGui();
 
     // --- RAII ガード（宣言順 = 初期化順、デストラクタは逆順で破棄される） ---
-    LoggerGuard                     m_loggerGuard;    // 最初に初期化、最後にシャットダウン
-    Config                          m_config;
-    SdlGuard                        m_sdlGuard;       // SDL_Init → デストラクタで SDL_Quit
+    Config                          m_config;          // 最初に初期化（MemoryConfig を提供）
+    memory::MemoryManagerGuard      m_memoryGuard;     // MemoryManager 初期化（Config の後）
+    LoggerGuard                     m_loggerGuard;     // Logger 初期化（MemoryManager の後）
+    SdlGuard                        m_sdlGuard;        // SDL_Init → デストラクタで SDL_Quit
 
     // --- SDL 依存リソース（破棄順序: 下→上） ---
     std::unique_ptr<Window>         m_window;

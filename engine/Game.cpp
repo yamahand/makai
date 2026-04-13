@@ -8,15 +8,11 @@
 namespace mk {
 
 Game::Game()
-    : m_loggerGuard()                              // Logger::init() — 例外時は runApp まで伝搬
-    , m_config(Config::load("config.json"))         // 設定ファイル読み込み
-    , m_sdlGuard(SDL_INIT_VIDEO | SDL_INIT_AUDIO)   // SDL_Init — 例外時は m_loggerGuard が破棄される
+    : m_config(Config::load("config.json"))                         // 設定ファイル読み込み（OS ヒープ使用）
+    , m_memoryGuard(m_config.memory)                                // MemoryManager::init() — Config の後
+    , m_loggerGuard(nullptr)                                        // Logger::init() — logger リソース未確保時も OS ヒープへフォールバック
+    , m_sdlGuard(SDL_INIT_VIDEO | SDL_INIT_AUDIO)                   // SDL_Init — 例外時はガードが逆順で破棄
 {
-    // メモリマネージャーを初期化（マスターバッファを確保）
-    if (!memory::MemoryManager::init(m_config.memory)) {
-        throw std::runtime_error("MemoryManager initialization failed");
-    }
-
     // SDL 依存リソースの生成
     // unique_ptr は初期値 nullptr なので、途中で例外が発生しても
     // 構築済みメンバーのデストラクタが逆順で正しく呼ばれる
@@ -67,7 +63,10 @@ void Game::init() {
 Game::~Game() {
     // メンバーの逆順破棄で以下が自動的に行われる:
     // m_sceneManager → m_textureManager → m_fontManager → m_imguiManager → m_window
-    // → ~SdlGuard(SDL_Quit) → m_config → ~LoggerGuard(Logger::shutdown)
+    // → ~SdlGuard(SDL_Quit)
+    // → ~LoggerGuard(Logger::shutdown)
+    // → ~MemoryManagerGuard(MemoryManager::shutdown)
+    // → m_config
 }
 
 void Game::run() {

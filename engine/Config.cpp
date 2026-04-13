@@ -82,6 +82,8 @@ Config Config::load(const std::string& path) {
             config.memory.buddyAllocatorMB = mem["buddy_allocator_mb"].GetInt();
         if (mem.HasMember("paged_allocator_page_kb") && mem["paged_allocator_page_kb"].IsInt())
             config.memory.pagedAllocatorPageKB = mem["paged_allocator_page_kb"].GetInt();
+        if (mem.HasMember("logger_heap_kb") && mem["logger_heap_kb"].IsInt())
+            config.memory.loggerHeapKB = mem["logger_heap_kb"].GetInt();
     }
 
     // ゲーム設定を読込
@@ -148,6 +150,7 @@ void Config::save(const std::string& path) const {
     memObj.AddMember("stack_allocator_mb", memory.stackAllocatorMB, alloc);
     memObj.AddMember("buddy_allocator_mb", memory.buddyAllocatorMB, alloc);
     memObj.AddMember("paged_allocator_page_kb", memory.pagedAllocatorPageKB, alloc);
+    memObj.AddMember("logger_heap_kb", memory.loggerHeapKB, alloc);
     doc.AddMember("memory", memObj, alloc);
 
     // ゲーム設定
