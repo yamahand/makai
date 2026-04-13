@@ -27,6 +27,7 @@ struct MemoryConfig {
     int stackAllocatorMB       = 4;   // スタックアロケーターのサイズ（MB）
     int buddyAllocatorMB       = 8;   // バディアロケーターのサイズ（MB、2の累乗に切り捨て）
     int pagedAllocatorPageKB   = 256; // ページドアロケーターの 1 ページサイズ（KB）
+    int loggerHeapKB           = 256; // Logger 専用ヒープのサイズ（KB）
 };
 
 // ゲーム設定

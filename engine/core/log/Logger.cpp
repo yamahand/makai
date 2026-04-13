@@ -2,6 +2,9 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#include <chrono>
+#include <ctime>
+#include <format>
 #include <iostream>
 #include <array>
 #include <memory>
@@ -155,9 +158,30 @@ std::shared_ptr<spdlog::logger> createCategoryLogger(
 // ---------------------------------------------------------------------------
 // Logger::init — カテゴリロガーを生成
 // ---------------------------------------------------------------------------
-void Logger::init(std::string_view logFile) {
+void Logger::init(std::string_view logFile, std::pmr::memory_resource* memResource) {
     // 二重初期化を防ぐ
     if (s_initialized) return;
+
+    // logFile が空のときは現在日時から "makai_YYYYMMDD_HHMMSS.log" を生成する
+    std::string resolvedLogFile;
+    if (logFile.empty()) {
+        auto now = std::chrono::system_clock::now();
+        std::time_t t = std::chrono::system_clock::to_time_t(now);
+        std::tm tm{};
+#ifdef _WIN32
+        localtime_s(&tm, &t);
+#else
+        localtime_r(&t, &tm);
+#endif
+        resolvedLogFile = std::format("makai_{:04}{:02}{:02}_{:02}{:02}{:02}.log",
+            tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+            tm.tm_hour, tm.tm_min, tm.tm_sec);
+    } else {
+        resolvedLogFile = std::string(logFile);
+    }
+
+    // 現在の実装では Logger 専用メモリリソースを実際の割り当てに利用していないため suppress する
+    (void)memResource;
 
 #ifdef _WIN32
     // コードページを UTF-8 に切り替える。例外時は CodePageGuard のデストラクタで自動復元される
@@ -169,7 +193,7 @@ void Logger::init(std::string_view logFile) {
     consoleSink->set_level(spdlog::level::trace);
 
     auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
-        std::string(logFile), /*truncate=*/true);
+        resolvedLogFile, /*truncate=*/true);
     fileSink->set_level(spdlog::level::trace);
 
     std::vector<spdlog::sink_ptr> sinks{ consoleSink, fileSink };

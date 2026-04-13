@@ -7,7 +7,7 @@
 #include "FreeListMemoryResource.hpp"
 #include "PoolAllocator.hpp"
 #include "../Config.hpp"
-#include <SDL3/SDL_log.h>
+#include "../core/log/Logger.hpp"
 #include <memory_resource>
 #include <new>
 #include <stdexcept>
@@ -23,7 +23,8 @@ namespace mk::memory {
 /// MemoryManager - メモリアロケーターの中央管理
 ///
 /// シングルトンパターンで、ゲーム全体のメモリ割り当てを管理する。
-/// Game::Game() の先頭で init(config.memory) を呼ぶ必要がある。
+/// Config 読み込み後、Logger::init() より前に init(config.memory) を呼ぶ必要がある。
+/// 通常は MemoryManagerGuard 経由で初期化・シャットダウンされる。
 ///
 /// 起動時に単一のマスターバッファを確保し、各アロケーターに分配する。
 /// （マスターバッファの OS への malloc 呼び出しと、init() 内部の std::make_unique 等による初期化時の一時的な確保を除き、
@@ -41,9 +42,27 @@ public:
     static MemoryManager& instance();
 
     /// マスターバッファを確保してアロケーターを初期化する
-    /// Game::Game() の先頭（他のどの初期化よりも前）に 1 度だけ呼ぶこと
+    /// Config 読み込み後、Logger::init() より前に 1 度だけ呼ぶこと。
+    /// 通常は MemoryManagerGuard 経由で呼ばれる。
     /// @return 成功時 true。失敗時 false（呼び出し側は起動を中止すること）
     static bool init(const mk::MemoryConfig& config);
+
+    /// 全リソースを解放する（MemoryManagerGuard のデストラクタから呼ばれる）
+    /// Logger::shutdown() の後に呼ぶこと
+    static void shutdown();
+
+    /// Logger 専用の pmr リソースを取得
+    /// Logger::init() から呼ばれる。MemoryManager::init() 後のみ有効。
+    std::pmr::memory_resource* loggerMemoryResource() {
+        assert(m_loggerResource && "MemoryManager::init() が呼ばれていません");
+        return m_loggerResource.get();
+    }
+
+    /// Logger 専用ヒープの FreeListAllocator を取得（StlAllocator 用）
+    FirstFitAllocator& loggerAllocator() {
+        assert(m_loggerResource && "MemoryManager::init() が呼ばれていません");
+        return m_loggerResource->getAllocator();
+    }
 
     /// フレームアロケーターを取得
     /// 毎フレーム終了時にリセットされる
@@ -229,6 +248,11 @@ private:
     /// OS ヒープを使わない PoolHolder スマートポインタ型
     using PoolHolderPtr = std::unique_ptr<IPoolBase, PoolHolderDeleter>;
 
+    // Logger 専用ヒープ（マスターバッファとは独立して確保）
+    std::unique_ptr<FirstFitMemoryResource> m_loggerResource;
+    void*  m_loggerBuffer = nullptr;
+    size_t m_loggerSize   = 0;
+
     // マスターバッファ（起動時に 1 度だけ malloc する）
     void*  m_masterBuffer = nullptr;
     size_t m_masterSize   = 0;
@@ -280,9 +304,9 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
         // (1) ブロック配列をマスター FreeList から確保する
         void* blockBuf = master.allocate(sizeof(Block) * PoolSize, alignof(Block));
         if (!blockBuf) {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                         "MemoryManager::getPool: ブロック配列の確保に失敗 (型: %s, %zu 個)",
-                         typeid(T).name(), PoolSize);
+            // OOM 経路で std::format を使うと追加の確保が発生し bad_alloc を隠す可能性があるため固定メッセージを使用する。
+            // getPool() は初期化完了後に呼ばれるため、CORE_ERROR（通常 Logger）で記録する。
+            CORE_ERROR("MemoryManager::getPool: ブロック配列の確保に失敗");
             assert(false && "MemoryManager::getPool: ブロック配列の確保に失敗");
             throw std::bad_alloc{};
         }
@@ -293,9 +317,8 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
             alignof(PoolHolder<T, PoolSize>));
         if (!holderBuf) {
             master.deallocate(blockBuf);  // ブロック配列のリーク防止
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                         "MemoryManager::getPool: PoolHolder の確保に失敗 (型: %s)",
-                         typeid(T).name());
+            // 同上: OOM 経路では固定メッセージのみ使用する
+            CORE_ERROR("MemoryManager::getPool: PoolHolder の確保に失敗");
             assert(false && "MemoryManager::getPool: PoolHolder の確保に失敗");
             throw std::bad_alloc{};
         }
@@ -323,9 +346,8 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
     // 既存プールを返す（PoolSize が一致していることを確認する）
     auto* base = it->second.get();
     if (base->poolSize != PoolSize) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "MemoryManager::getPool: PoolSize 不一致 (型: %s, 既存: %zu, 要求: %zu)",
-                     typeid(T).name(), base->poolSize, PoolSize);
+        // getPool() は初期化完了後に呼ばれるため CORE_ERROR（通常ログ経路）を使用する
+        CORE_ERROR("MemoryManager::getPool: PoolSize mismatch (PoolSize 不一致)");
         assert(false && "MemoryManager::getPool: PoolSize mismatch");
         throw std::logic_error("MemoryManager::getPool: PoolSize mismatch");
     }
