@@ -40,8 +40,8 @@ inline void debugBreak() {
 }
 
 // 可変引数版ヘルパーテンプレート
-// std::format_string のコンパイル時検証により不正なフォーマットはコンパイルエラーになるため、
-// ランタイムのフォーマットエラーは発生しない
+// std::format_string のコンパイル時検証によりフォーマット文字列の構文・型不一致はコンパイル時に検出されるが、
+// 動的な幅/精度など実行時条件による std::format_error は発生し得る（例外無効環境では terminate/abort になる）
 template<typename... Args>
 [[noreturn]] inline void failf(LogCategory category, const char* expr, const char* file, int line,
                                std::format_string<Args...> fmt, Args&&... args) {

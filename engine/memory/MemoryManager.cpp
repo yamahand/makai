@@ -165,7 +165,6 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
     mgr.m_masterSize = totalSize;
 
     // 例外無効環境: make_unique の内部 new 失敗時は abort される。
-    // ただし構築するオブジェクトは小さなメタデータ（数十バイト）のため OOM リスクは極めて低い。
     // masterBuffer リーク＋次回 init 不可を防ぐための rollback は検証失敗パスで引き続き使用する。
     auto rollback = [&]() {
         mgr.m_pagedAllocator.reset();
@@ -186,6 +185,23 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
         // Logger 専用ヒープも巻き戻す
         rollbackLogger();
     };
+
+    // 例外無効環境では make_unique の内部 new 失敗時に即 terminate されうるため、
+    // スコープ付きの new ハンドラを設置して固定メッセージをログへ残してから abort する。
+    // MemoryManager::init はゲーム起動時にメインスレッドから 1 度だけ呼ぶことを前提とする。
+    struct ScopedNewHandler {
+        std::new_handler m_previous;
+
+        ScopedNewHandler()
+            : m_previous(std::set_new_handler([]() {
+                  MK_BOOT_ERROR("MemoryManager: サブアロケータ管理オブジェクトの確保に失敗しました");
+                  std::abort();
+              })) {}
+
+        ~ScopedNewHandler() {
+            std::set_new_handler(m_previous);
+        }
+    } scopedNewHandler;
 
     {
         // マスター FreeList がバッファ全体を管理する
