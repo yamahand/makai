@@ -8,8 +8,12 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # MSVC: UTF-8 without BOM support for Japanese comments
+# 例外を無効化する（ゲームエンジンのパフォーマンス最適化）
 if(MSVC)
-    add_compile_options(/utf-8)
+    add_compile_options(/utf-8 /Zc:preprocessor)
+    string(REGEX REPLACE "/EH[a-z]+" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    add_compile_options(/EHs-c-)
+    add_compile_definitions(_HAS_EXCEPTIONS=0)
 endif()
 
 # VC版プレビルドバイナリを使用するため MSVC / 64bit 環境を要求
@@ -103,9 +107,10 @@ set(GLM_BUILD_LIBRARY OFF CACHE BOOL "" FORCE)
 set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 
 # spdlog options: テスト・ベンチマーク・サンプルを無効化してビルド時間を削減
-set(SPDLOG_BUILD_TESTS   OFF CACHE BOOL "" FORCE)
-set(SPDLOG_BUILD_BENCH   OFF CACHE BOOL "" FORCE)
-set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
+set(SPDLOG_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
+set(SPDLOG_BUILD_BENCH    OFF CACHE BOOL "" FORCE)
+set(SPDLOG_BUILD_EXAMPLE  OFF CACHE BOOL "" FORCE)
+set(SPDLOG_NO_EXCEPTIONS  ON  CACHE BOOL "" FORCE)
 
 # RapidJSON は header-only のため、ソースのダウンロードのみ行い CMake ビルドは実行しない
 if(POLICY CMP0169)

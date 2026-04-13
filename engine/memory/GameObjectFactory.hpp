@@ -18,7 +18,7 @@ public:
     /// オブジェクトを生成する
     /// @tparam T オブジェクトの型（PoolAllocatorに登録済みである必要がある）
     /// @param args コンストラクタ引数
-    /// @return 生成されたオブジェクトへのポインタ（プール枯渇時はnullptr、コンストラクタ例外は再送出）
+    /// @return 生成されたオブジェクトへのポインタ（プール枯渇時はnullptr）
     template<typename T, typename... Args>
     static T* create(Args&&... args) {
         auto& pool = MemoryManager::instance().getPool<T>();
@@ -31,15 +31,9 @@ public:
             return nullptr;
         }
 
-        // placement newでコンストラクタを呼ぶ
-        // コンストラクタが例外を投げた場合はプールを返却してから再送出する
-        try {
-            new (ptr) T(std::forward<Args>(args)...);
-        }
-        catch (...) {
-            pool.deallocate(ptr);
-            throw;
-        }
+        // placement new でコンストラクタを呼ぶ
+        // 例外無効環境ではコンストラクタ内のエラーは abort される
+        new (ptr) T(std::forward<Args>(args)...);
 
         #ifdef DEBUG_MEMORY_VERBOSE
         SDL_LogDebug(SDL_LOG_CATEGORY_APPLICATION,

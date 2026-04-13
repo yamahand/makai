@@ -1,8 +1,8 @@
 #include "Game.hpp"
 #include "core/log/Logger.hpp"
+#include "core/log/Assert.hpp"
 #include <SDL3/SDL.h>
 #include <imgui.h>
-#include <stdexcept>
 #include <string>
 
 namespace mk {
@@ -11,11 +11,9 @@ Game::Game()
     : m_config(Config::load("config.json"))                         // 設定ファイル読み込み（OS ヒープ使用）
     , m_memoryGuard(m_config.memory)                                // MemoryManager::init() — Config の後
     , m_loggerGuard(nullptr)                                        // Logger::init() — logger リソース未確保時も OS ヒープへフォールバック
-    , m_sdlGuard(SDL_INIT_VIDEO | SDL_INIT_AUDIO)                   // SDL_Init — 例外時はガードが逆順で破棄
+    , m_sdlGuard(SDL_INIT_VIDEO | SDL_INIT_AUDIO)                   // SDL_Init — 失敗時は MK_VERIFY_MSG で abort
 {
     // SDL 依存リソースの生成
-    // unique_ptr は初期値 nullptr なので、途中で例外が発生しても
-    // 構築済みメンバーのデストラクタが逆順で正しく呼ばれる
     m_window = std::make_unique<Window>(
         m_config.window.title,
         m_config.window.width,
@@ -47,10 +45,8 @@ Game::Game()
 }
 
 void Game::init() {
-    // 二重呼び出しは論理エラーとして扱う（init() は一度だけ呼べる）
-    if (m_initialized) {
-        throw std::logic_error("Game::init() called more than once");
-    }
+    // 二重呼び出しはプログラマーエラーとして扱う（init() は一度だけ呼べる）
+    MK_VERIFY_MSG(!m_initialized, "Game::init() called more than once");
 
     // 再入を防ぐため、onInit() を呼ぶ前に初期化済みフラグを立てる
     m_initialized = true;
@@ -70,9 +66,7 @@ Game::~Game() {
 }
 
 void Game::run() {
-    if (!m_initialized) {
-        throw std::logic_error("Game::run() called before Game::init()");
-    }
+    MK_VERIFY_MSG(m_initialized, "Game::run() called before Game::init()");
     m_running = true;
     Uint64 prev = SDL_GetTicks();
 

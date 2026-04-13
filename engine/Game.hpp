@@ -21,7 +21,7 @@ public:
     virtual ~Game();  // サブクラスを安全に破棄できるよう virtual にする
 
     void init();  // onInit() を呼ぶ + applyPendingChanges()（runApp<T> から構築後に呼ばれる）
-    void run();   // init() が呼ばれていない場合は std::logic_error を投げる
+    void run();   // init() が呼ばれていない場合は MK_VERIFY_MSG で abort する
 
     SceneManager&          sceneManager()   { return *m_sceneManager; }
     Window&                window()         { return *m_window; }

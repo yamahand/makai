@@ -1,10 +1,10 @@
 #pragma once
 #include <cstddef>
+#include <cstdlib>      // std::abort
 #include <limits>
 #include <memory>       // std::allocator_traits
-#include <stdexcept>
 #include <type_traits>
-#include <new>          // std::bad_alloc
+#include "../core/log/Logger.hpp"
 
 namespace mk::memory {
 
@@ -53,14 +53,17 @@ public:
     {}
 
     /// n 個の T を割り当てる
+    /// 例外無効環境では失敗時に abort する（MSVC STL の /EHs-c- 動作と一貫）
     T* allocate(std::size_t n) {
         // n * sizeof(T) の乗算オーバーフローを検出する
         if (sizeof(T) > 0 && n > std::numeric_limits<std::size_t>::max() / sizeof(T)) {
-            throw std::bad_alloc{};
+            MK_BOOT_ERROR("StlAllocator::allocate: サイズオーバーフロー");
+            std::abort();
         }
         void* ptr = m_backing->allocate(n * sizeof(T), alignof(T));
         if (!ptr) {
-            throw std::bad_alloc{};
+            MK_BOOT_ERROR("StlAllocator::allocate: メモリ確保に失敗しました");
+            std::abort();
         }
         return static_cast<T*>(ptr);
     }

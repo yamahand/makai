@@ -40,18 +40,12 @@ inline void debugBreak() {
 }
 
 // 可変引数版ヘルパーテンプレート
+// std::format_string のコンパイル時検証によりフォーマット文字列の構文・型不一致はコンパイル時に検出されるが、
+// 動的な幅/精度など実行時条件による std::format_error は発生し得る（例外無効環境では terminate/abort になる）
 template<typename... Args>
 [[noreturn]] inline void failf(LogCategory category, const char* expr, const char* file, int line,
                                std::format_string<Args...> fmt, Args&&... args) {
-    // フォーマット失敗時も debugBreak()→abort() に確実に到達させるため try/catch で保護
-    std::string msg;
-    try {
-        msg = std::format(fmt, std::forward<Args>(args)...);
-    } catch (const std::format_error& e) {
-        msg = std::string("(フォーマットエラー: ") + e.what() + ")";
-    } catch (...) {
-        msg = "(不明なフォーマットエラー)";
-    }
+    std::string msg = std::format(fmt, std::forward<Args>(args)...);
     fail(category, expr, file, line, msg);
 }
 
@@ -71,14 +65,7 @@ inline void ensureFail(LogCategory category, const char* expr, const char* file,
 template<typename... Args>
 inline void ensureFailf(LogCategory category, const char* expr, const char* file, int line,
                         std::format_string<Args...> fmt, Args&&... args) {
-    std::string msg;
-    try {
-        msg = std::format(fmt, std::forward<Args>(args)...);
-    } catch (const std::format_error& e) {
-        msg = std::string("(フォーマットエラー: ") + e.what() + ")";
-    } catch (...) {
-        msg = "(不明なフォーマットエラー)";
-    }
+    std::string msg = std::format(fmt, std::forward<Args>(args)...);
     ensureFail(category, expr, file, line, msg);
 }
 
@@ -100,14 +87,7 @@ inline void ensureFailf(LogCategory category, const char* expr, const char* file
 template<typename... Args>
 [[noreturn]] inline void unreachableFailf(LogCategory category, const char* file, int line,
                                           std::format_string<Args...> fmt, Args&&... args) {
-    std::string msg;
-    try {
-        msg = std::format(fmt, std::forward<Args>(args)...);
-    } catch (const std::format_error& e) {
-        msg = std::string("(フォーマットエラー: ") + e.what() + ")";
-    } catch (...) {
-        msg = "(不明なフォーマットエラー)";
-    }
+    std::string msg = std::format(fmt, std::forward<Args>(args)...);
     unreachableFail(category, file, line, msg);
 }
 
@@ -129,14 +109,7 @@ template<typename... Args>
 template<typename... Args>
 [[noreturn]] inline void notImplementedFailf(LogCategory category, const char* file, int line,
                                              std::format_string<Args...> fmt, Args&&... args) {
-    std::string msg;
-    try {
-        msg = std::format(fmt, std::forward<Args>(args)...);
-    } catch (const std::format_error& e) {
-        msg = std::string("(フォーマットエラー: ") + e.what() + ")";
-    } catch (...) {
-        msg = "(不明なフォーマットエラー)";
-    }
+    std::string msg = std::format(fmt, std::forward<Args>(args)...);
     notImplementedFail(category, file, line, msg);
 }
 

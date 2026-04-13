@@ -1,7 +1,8 @@
 #pragma once
 #include "FreeListAllocator.hpp"
+#include "../core/log/Logger.hpp"
+#include <cstdlib>          // std::abort
 #include <memory_resource>
-#include <new>      // std::bad_alloc
 
 namespace mk::memory {
 
@@ -49,8 +50,11 @@ public:
 protected:
     void* do_allocate(size_t bytes, size_t alignment) override {
         void* ptr = m_allocator.allocate(bytes, alignment);
-        // pmr の契約では失敗時に std::bad_alloc を投げる
-        if (!ptr) throw std::bad_alloc{};
+        // pmr の契約では失敗時に例外を投げるが、例外無効環境では abort する
+        if (!ptr) {
+            MK_BOOT_ERROR("FreeListMemoryResource::do_allocate: メモリ確保に失敗しました");
+            std::abort();
+        }
         return ptr;
     }
 

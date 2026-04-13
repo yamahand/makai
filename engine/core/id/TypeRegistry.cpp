@@ -199,28 +199,19 @@ TypeId TypeRegistry::registerType(
     m_types.emplace(id, info);
 
     // emplace の戻り値を確認して Name 衝突を検出する
-    // 例外安全: m_nameIndex.emplace が例外を投げた場合は m_types をロールバックする
-    try
+    // 例外無効環境では emplace の失敗（OOM）はランタイムにより abort されるためロールバック不要
+    const auto nameResult = m_nameIndex.emplace(name.getId(), id);
+    if (!nameResult.second)
     {
-        const auto nameResult = m_nameIndex.emplace(name.getId(), id);
-        if (!nameResult.second)
-        {
-            // m_types をロールバックして両インデックスの整合性を保つ
-            m_types.erase(id);
-            // 手動登録での Name 衝突はプログラマーのミス（同一名を別 TypeId で登録しようとした）。
-            // 仕様通り 0 を返して「登録失敗」を通知する。
-            // 既存の TypeId を知りたい場合は findType(name) を使うこと。
-            assert(false && "TypeRegistry: 同一 Name で異なる TypeId の登録を検出");
-            CORE_ERROR("TypeRegistry: Name の衝突を検出 — 登録失敗 nameId={} 既存 TypeId={} 新規 TypeId={}",
-                       name.getId(), nameResult.first->second, id);
-            return 0;
-        }
-    }
-    catch (...)
-    {
-        // m_nameIndex.emplace が bad_alloc 等を投げた場合にロールバックして再送出
+        // m_types をロールバックして両インデックスの整合性を保つ
         m_types.erase(id);
-        throw;
+        // 手動登録での Name 衝突はプログラマーのミス（同一名を別 TypeId で登録しようとした）。
+        // 仕様通り 0 を返して「登録失敗」を通知する。
+        // 既存の TypeId を知りたい場合は findType(name) を使うこと。
+        assert(false && "TypeRegistry: 同一 Name で異なる TypeId の登録を検出");
+        CORE_ERROR("TypeRegistry: Name の衝突を検出 — 登録失敗 nameId={} 既存 TypeId={} 新規 TypeId={}",
+                   name.getId(), nameResult.first->second, id);
+        return 0;
     }
 
     CORE_INFO("TypeRegistry: 型を登録 — id={} nameId={} size={} align={}",
