@@ -60,3 +60,6 @@ external/SDL3_image-3.4.0/
 
 # ImGui ユーザー設定（ウィンドウ位置・サイズなど）
 imgui.ini
+
+# ローカル設定（マシン固有・コミット不要）
+settings.local.json
