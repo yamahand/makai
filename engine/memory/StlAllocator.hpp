@@ -56,6 +56,8 @@ public:
     /// 例外無効環境では失敗時に abort する（MSVC STL の /EHs-c- 動作と一貫）
     /// OOM 経路では動的確保を伴わない std::fputs で固定メッセージを出力してから abort する
     T* allocate(std::size_t n) {
+        // 実装定義動作：allocate(0) には nullptr を返す（OOM abort を回避）
+        if (n == 0) return nullptr;
         // n * sizeof(T) の乗算オーバーフローを検出する
         if (sizeof(T) > 0 && n > std::numeric_limits<std::size_t>::max() / sizeof(T)) {
             std::fputs("StlAllocator::allocate: サイズオーバーフロー\n", stderr);

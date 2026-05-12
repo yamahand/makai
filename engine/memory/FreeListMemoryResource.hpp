@@ -49,6 +49,8 @@ public:
 
 protected:
     void* do_allocate(size_t bytes, size_t alignment) override {
+        // 実装定義動作：bytes == 0 には nullptr を返す（OOM abort を回避）
+        if (bytes == 0) return nullptr;
         void* ptr = m_allocator.allocate(bytes, alignment);
         // pmr の契約では失敗時に例外を投げるが、例外無効環境では abort する
         // OOM 経路で動的確保を誘発しないよう std::fputs を使用する
