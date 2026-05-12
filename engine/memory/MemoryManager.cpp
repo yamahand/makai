@@ -1,6 +1,7 @@
 #include "MemoryManager.hpp"
 #include "../core/log/Logger.hpp"
 #include <bit>
+#include <cstdio>       // std::fputs
 #include <cstdlib>
 #include <format>
 #include <new>      // std::nothrow
@@ -187,14 +188,18 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
     };
 
     // 例外無効環境では make_unique の内部 new 失敗時に即 terminate されうるため、
-    // スコープ付きの new ハンドラを設置して固定メッセージをログへ残してから abort する。
+    // スコープ付きの new ハンドラを設置して固定メッセージを stderr へ残してから abort する。
+    // ・動的確保を避けるため std::fputs を使用する（BootstrapLogger は std::cerr/std::string を使うため OOM 時に再入する恐れがある）
+    // ・再帰呼び出しを防ぐためハンドラ内でまず std::set_new_handler(nullptr) を呼ぶ
     // MemoryManager::init はゲーム起動時にメインスレッドから 1 度だけ呼ぶことを前提とする。
     struct ScopedNewHandler {
         std::new_handler m_previous;
 
         ScopedNewHandler()
             : m_previous(std::set_new_handler([]() {
-                  MK_BOOT_ERROR("MemoryManager: サブアロケータ管理オブジェクトの確保に失敗しました");
+                  // ハンドラを先に解除して再入を防ぐ
+                  std::set_new_handler(nullptr);
+                  std::fputs("MemoryManager: サブアロケータ管理オブジェクトの確保に失敗しました (OOM)\n", stderr);
                   std::abort();
               })) {}
 

@@ -62,6 +62,9 @@ inline void ensureFail(LogCategory category, const char* expr, const char* file,
 }
 
 // ensure 用の可変引数版ヘルパーテンプレート
+// 注意: 例外無効環境では std::format の動的幅/精度（"{:{}d}" 等）による std::format_error が
+// terminate/abort になるため、MK_ENSURE_MSG / ENSURE 系マクロのフォーマット文字列に
+// 動的幅/精度を使用しないこと
 template<typename... Args>
 inline void ensureFailf(LogCategory category, const char* expr, const char* file, int line,
                         std::format_string<Args...> fmt, Args&&... args) {

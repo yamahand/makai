@@ -1,6 +1,6 @@
 #pragma once
 #include "FreeListAllocator.hpp"
-#include "../core/log/Logger.hpp"
+#include <cstdio>           // std::fputs
 #include <cstdlib>          // std::abort
 #include <memory_resource>
 
@@ -51,8 +51,9 @@ protected:
     void* do_allocate(size_t bytes, size_t alignment) override {
         void* ptr = m_allocator.allocate(bytes, alignment);
         // pmr の契約では失敗時に例外を投げるが、例外無効環境では abort する
+        // OOM 経路で動的確保を誘発しないよう std::fputs を使用する
         if (!ptr) {
-            MK_BOOT_ERROR("FreeListMemoryResource::do_allocate: メモリ確保に失敗しました");
+            std::fputs("FreeListMemoryResource::do_allocate: メモリ確保に失敗しました\n", stderr);
             std::abort();
         }
         return ptr;

@@ -1,10 +1,10 @@
 #pragma once
 #include <cstddef>
+#include <cstdio>       // std::fputs
 #include <cstdlib>      // std::abort
 #include <limits>
 #include <memory>       // std::allocator_traits
 #include <type_traits>
-#include "../core/log/Logger.hpp"
 
 namespace mk::memory {
 
@@ -54,15 +54,16 @@ public:
 
     /// n 個の T を割り当てる
     /// 例外無効環境では失敗時に abort する（MSVC STL の /EHs-c- 動作と一貫）
+    /// OOM 経路では動的確保を伴わない std::fputs で固定メッセージを出力してから abort する
     T* allocate(std::size_t n) {
         // n * sizeof(T) の乗算オーバーフローを検出する
         if (sizeof(T) > 0 && n > std::numeric_limits<std::size_t>::max() / sizeof(T)) {
-            MK_BOOT_ERROR("StlAllocator::allocate: サイズオーバーフロー");
+            std::fputs("StlAllocator::allocate: サイズオーバーフロー\n", stderr);
             std::abort();
         }
         void* ptr = m_backing->allocate(n * sizeof(T), alignof(T));
         if (!ptr) {
-            MK_BOOT_ERROR("StlAllocator::allocate: メモリ確保に失敗しました");
+            std::fputs("StlAllocator::allocate: メモリ確保に失敗しました\n", stderr);
             std::abort();
         }
         return static_cast<T*>(ptr);

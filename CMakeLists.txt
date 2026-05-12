@@ -8,12 +8,12 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # MSVC: UTF-8 without BOM support for Japanese comments
-# 例外を無効化する（ゲームエンジンのパフォーマンス最適化）
+# MSVC のデフォルト /EHsc を CMAKE_CXX_FLAGS から除去するのみ。
+# /EHs-c- と _HAS_EXCEPTIONS=0 は外部ライブラリに波及しないよう
+# 各ターゲットへ個別に適用する（下記 target_compile_options/target_compile_definitions を参照）。
 if(MSVC)
     add_compile_options(/utf-8 /Zc:preprocessor)
     string(REGEX REPLACE "/EH[a-z]+" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-    add_compile_options(/EHs-c-)
-    add_compile_definitions(_HAS_EXCEPTIONS=0)
 endif()
 
 # VC版プレビルドバイナリを使用するため MSVC / 64bit 環境を要求
@@ -166,6 +166,12 @@ list(APPEND GAME_SOURCES "${CMAKE_SOURCE_DIR}/main.cpp")
 source_group(TREE ${CMAKE_SOURCE_DIR} FILES ${GAME_SOURCES})
 
 add_executable(${PROJECT_NAME} ${GAME_SOURCES})
+
+# 例外を無効化（外部ライブラリには波及させないため target_* で自プロジェクトのみに適用）
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE /EHs-c-)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE _HAS_EXCEPTIONS=0)
+endif()
 
 # Visual Studio デバッガーの作業ディレクトリを実行ファイルと同じ場所に設定
 set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY $<TARGET_FILE_DIR:${PROJECT_NAME}>)
