@@ -252,12 +252,20 @@ template<typename... Args>
 #define MK_ENSURE_MSG(expr, fmt, ...) \
     ((expr) ? (void)0 : ::mk::assert_impl::ensureFailf(::mk::LogCategory::Core, #expr, __FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__))
 
+// フォーマットを行わない固定文字列版（例外無効環境で std::format_error を回避したい場合に使用）
+// msg には std::string_view へ暗黙変換可能な任意の値（文字列リテラル・std::string 等）を渡す
+#define MK_ENSURE_STR(expr, msg) \
+    ((expr) ? (void)0 : ::mk::assert_impl::ensureFail(::mk::LogCategory::Core, #expr, __FILE__, __LINE__, std::string_view{msg}))
+
 // --- Core ---
 #define CORE_ENSURE(expr) \
     ((expr) ? (void)0 : ::mk::assert_impl::ensureFail(::mk::LogCategory::Core, #expr, __FILE__, __LINE__, std::string_view{}))
 
 #define CORE_ENSURE_MSG(expr, fmt, ...) \
     ((expr) ? (void)0 : ::mk::assert_impl::ensureFailf(::mk::LogCategory::Core, #expr, __FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__))
+
+#define CORE_ENSURE_STR(expr, msg) \
+    ((expr) ? (void)0 : ::mk::assert_impl::ensureFail(::mk::LogCategory::Core, #expr, __FILE__, __LINE__, std::string_view{msg}))
 
 // --- Renderer ---
 #define RENDERER_ENSURE(expr) \
@@ -266,12 +274,18 @@ template<typename... Args>
 #define RENDERER_ENSURE_MSG(expr, fmt, ...) \
     ((expr) ? (void)0 : ::mk::assert_impl::ensureFailf(::mk::LogCategory::Renderer, #expr, __FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__))
 
+#define RENDERER_ENSURE_STR(expr, msg) \
+    ((expr) ? (void)0 : ::mk::assert_impl::ensureFail(::mk::LogCategory::Renderer, #expr, __FILE__, __LINE__, std::string_view{msg}))
+
 // --- Physics ---
 #define PHYSICS_ENSURE(expr) \
     ((expr) ? (void)0 : ::mk::assert_impl::ensureFail(::mk::LogCategory::Physics, #expr, __FILE__, __LINE__, std::string_view{}))
 
 #define PHYSICS_ENSURE_MSG(expr, fmt, ...) \
     ((expr) ? (void)0 : ::mk::assert_impl::ensureFailf(::mk::LogCategory::Physics, #expr, __FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__))
+
+#define PHYSICS_ENSURE_STR(expr, msg) \
+    ((expr) ? (void)0 : ::mk::assert_impl::ensureFail(::mk::LogCategory::Physics, #expr, __FILE__, __LINE__, std::string_view{msg}))
 
 // --- Audio ---
 #define AUDIO_ENSURE(expr) \
@@ -280,12 +294,18 @@ template<typename... Args>
 #define AUDIO_ENSURE_MSG(expr, fmt, ...) \
     ((expr) ? (void)0 : ::mk::assert_impl::ensureFailf(::mk::LogCategory::Audio, #expr, __FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__))
 
+#define AUDIO_ENSURE_STR(expr, msg) \
+    ((expr) ? (void)0 : ::mk::assert_impl::ensureFail(::mk::LogCategory::Audio, #expr, __FILE__, __LINE__, std::string_view{msg}))
+
 // --- Game ---
 #define GAME_ENSURE(expr) \
     ((expr) ? (void)0 : ::mk::assert_impl::ensureFail(::mk::LogCategory::Game, #expr, __FILE__, __LINE__, std::string_view{}))
 
 #define GAME_ENSURE_MSG(expr, fmt, ...) \
     ((expr) ? (void)0 : ::mk::assert_impl::ensureFailf(::mk::LogCategory::Game, #expr, __FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__))
+
+#define GAME_ENSURE_STR(expr, msg) \
+    ((expr) ? (void)0 : ::mk::assert_impl::ensureFail(::mk::LogCategory::Game, #expr, __FILE__, __LINE__, std::string_view{msg}))
 
 // ===========================================================================
 // UNREACHABLE / NOT_IMPLEMENTED マクロ（リリースでも有効。常にクラッシュ）
