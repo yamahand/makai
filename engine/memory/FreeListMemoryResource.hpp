@@ -56,6 +56,8 @@ protected:
         // OOM 経路で動的確保を誘発しないよう std::fputs を使用する
         if (!ptr) {
             std::fputs("FreeListMemoryResource::do_allocate: メモリ確保に失敗しました\n", stderr);
+            // stderr がリダイレクトされていても診断メッセージを反映しやすくする
+            std::fflush(stderr);
             std::abort();
         }
         return ptr;
