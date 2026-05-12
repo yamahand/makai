@@ -127,6 +127,12 @@ endif()
 
 FetchContent_MakeAvailable(imgui glm spdlog)
 
+# spdlog は最終バイナリにリンクされるため、例外無効フラグを揃える（SPDLOG_NO_EXCEPTIONS と対になる）
+if(MSVC)
+    target_compile_options(spdlog PRIVATE /EHs-c-)
+    target_compile_definitions(spdlog PRIVATE _HAS_EXCEPTIONS=0)
+endif()
+
 # Create ImGui library with SDL3 backend
 add_library(imgui_sdl3 STATIC
     ${imgui_SOURCE_DIR}/imgui.cpp
@@ -144,6 +150,12 @@ target_include_directories(imgui_sdl3 PUBLIC
 )
 
 target_link_libraries(imgui_sdl3 PUBLIC SDL3::SDL3)
+
+# imgui_sdl3 は最終バイナリにリンクされるため、例外無効フラグを揃える
+if(MSVC)
+    target_compile_options(imgui_sdl3 PRIVATE /EHs-c-)
+    target_compile_definitions(imgui_sdl3 PRIVATE _HAS_EXCEPTIONS=0)
+endif()
 
 # 外部ライブラリのターゲットを Visual Studio の "External" フォルダーにまとめる
 foreach(_target IN ITEMS imgui_sdl3 spdlog)
