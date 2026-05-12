@@ -73,6 +73,8 @@ public:
 
     /// n 個の T を解放する
     void deallocate(T* ptr, std::size_t /*n*/) noexcept {
+        // allocate(0) が nullptr を返すため、nullptr の解放は何もしない
+        if (!ptr) return;
         m_backing->deallocate(ptr);
     }
 

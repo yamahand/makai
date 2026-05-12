@@ -1,7 +1,8 @@
 #pragma once
 #include "MemoryManager.hpp"
 #include "../Config.hpp"
-#include "../core/log/Assert.hpp"
+#include <cstdio>
+#include <cstdlib>
 
 namespace mk::memory {
 
@@ -13,10 +14,14 @@ class MemoryManagerGuard {
 public:
     /// Config のメモリ設定を受け取り MemoryManager を初期化する
     /// 初期化失敗は致命的エラーとして abort する
+    /// OOM の可能性があるため std::format / ログ出力を伴わない固定メッセージで終了する
     explicit MemoryManagerGuard(const MemoryConfig& memConfig)
         : m_initializedByThisGuard(MemoryManager::init(memConfig)) {
-        MK_VERIFY_MSG(m_initializedByThisGuard,
-            "MemoryManager の初期化に失敗しました。詳細は BootstrapLogger / ログ出力を参照してください。");
+        if (!m_initializedByThisGuard) {
+            std::fputs("MemoryManager の初期化に失敗しました。詳細は BootstrapLogger / ログ出力を参照してください。\n", stderr);
+            std::fflush(stderr);
+            std::abort();
+        }
     }
 
     ~MemoryManagerGuard() {
