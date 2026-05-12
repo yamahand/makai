@@ -1,6 +1,6 @@
 #pragma once
 #include <SDL3/SDL.h>
-#include "../core/log/Assert.hpp"
+#include "core/log/Assert.hpp"
 
 namespace mk {
 
