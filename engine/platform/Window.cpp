@@ -1,5 +1,5 @@
 #include "Window.hpp"
-#include "../core/log/Assert.hpp"
+#include "core/log/Assert.hpp"
 
 namespace mk {
 
