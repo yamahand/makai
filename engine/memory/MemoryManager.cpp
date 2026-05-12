@@ -200,6 +200,8 @@ bool MemoryManager::init(const mk::MemoryConfig& config) {
                   // ハンドラを先に解除して再入を防ぐ
                   std::set_new_handler(nullptr);
                   std::fputs("MemoryManager: サブアロケータ管理オブジェクトの確保に失敗しました (OOM)\n", stderr);
+                  // リダイレクト時でも診断メッセージが欠落しないよう明示的にフラッシュする
+                  std::fflush(stderr);
                   std::abort();
               })) {}
 
