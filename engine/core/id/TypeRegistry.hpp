@@ -147,6 +147,7 @@ TypeId TypeRegistry::registerType()
             if (!sizeMatch || !alignmentMatch || !nameMatch)
             {
                 std::fputs("TypeRegistry: typeId 衝突を検出したため異常終了します\n", stderr);
+                std::fflush(stderr);
                 std::abort();
             }
             return id;
@@ -172,6 +173,7 @@ TypeId TypeRegistry::registerType()
             if (!sizeMatch || !alignmentMatch || !nameMatch)
             {
                 std::fputs("TypeRegistry: typeId 衝突を検出したため異常終了します\n", stderr);
+                std::fflush(stderr);
                 std::abort();
             }
             return id;
@@ -200,6 +202,7 @@ TypeId TypeRegistry::registerType()
         // エンジンの根本的な不整合を示すため、Release ビルドでも即座に終了する。
         // NDEBUG 時には assert が無効化されるため、std::abort() の前に理由を stderr に出力する
         std::fputs("TypeRegistry: 同一 Name で異なる TypeId の登録を検出したため、異常終了します。\n", stderr);
+        std::fflush(stderr);
         assert(false && "TypeRegistry: 同一 Name で異なる TypeId の登録を検出");
         std::abort();
     }

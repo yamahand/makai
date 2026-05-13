@@ -61,11 +61,13 @@ public:
         // n * sizeof(T) の乗算オーバーフローを検出する
         if (sizeof(T) > 0 && n > std::numeric_limits<std::size_t>::max() / sizeof(T)) {
             std::fputs("StlAllocator::allocate: サイズオーバーフロー\n", stderr);
+            std::fflush(stderr);
             std::abort();
         }
         void* ptr = m_backing->allocate(n * sizeof(T), alignof(T));
         if (!ptr) {
             std::fputs("StlAllocator::allocate: メモリ確保に失敗しました\n", stderr);
+            std::fflush(stderr);
             std::abort();
         }
         return static_cast<T*>(ptr);
