@@ -1,10 +1,10 @@
 #pragma once
 #include <cstddef>
+#include <cstdio>       // std::fputs
+#include <cstdlib>      // std::abort
 #include <limits>
 #include <memory>       // std::allocator_traits
-#include <stdexcept>
 #include <type_traits>
-#include <new>          // std::bad_alloc
 
 namespace mk::memory {
 
@@ -53,20 +53,30 @@ public:
     {}
 
     /// n 個の T を割り当てる
+    /// 例外無効環境では失敗時に abort する（MSVC STL の /EHs-c- 動作と一貫）
+    /// OOM 経路では動的確保を伴わない std::fputs で固定メッセージを出力してから abort する
     T* allocate(std::size_t n) {
+        // 実装定義動作：allocate(0) には nullptr を返す（OOM abort を回避）
+        if (n == 0) return nullptr;
         // n * sizeof(T) の乗算オーバーフローを検出する
         if (sizeof(T) > 0 && n > std::numeric_limits<std::size_t>::max() / sizeof(T)) {
-            throw std::bad_alloc{};
+            std::fputs("StlAllocator::allocate: サイズオーバーフロー\n", stderr);
+            std::fflush(stderr);
+            std::abort();
         }
         void* ptr = m_backing->allocate(n * sizeof(T), alignof(T));
         if (!ptr) {
-            throw std::bad_alloc{};
+            std::fputs("StlAllocator::allocate: メモリ確保に失敗しました\n", stderr);
+            std::fflush(stderr);
+            std::abort();
         }
         return static_cast<T*>(ptr);
     }
 
     /// n 個の T を解放する
     void deallocate(T* ptr, std::size_t /*n*/) noexcept {
+        // allocate(0) が nullptr を返すため、nullptr の解放は何もしない
+        if (!ptr) return;
         m_backing->deallocate(ptr);
     }
 

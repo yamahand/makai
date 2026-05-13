@@ -1,8 +1,6 @@
 #pragma once
 #include "Game.hpp"
-#include <SDL3/SDL_log.h>
 #include <concepts>
-#include <exception>
 
 namespace mk {
 
@@ -10,19 +8,15 @@ namespace mk {
 template<typename T>
 concept DerivedGame = std::derived_from<T, Game> && (!std::same_as<T, Game>) && std::default_initializable<T>;
 
-// main 関数の定型コード（初期化・実行・例外処理）をエンジン側に隠蔽するテンプレート関数
+// main 関数の定型コード（初期化・実行）をエンジン側に隠蔽するテンプレート関数
+// 例外無効環境: 致命的エラーは MK_VERIFY_MSG / std::abort() で処理される
 template<DerivedGame T>
 int runApp(int argc, char* argv[]) {
     (void)argc;
     (void)argv;
-    try {
-        T app;
-        app.init();  // 仮想関数が正しくディスパッチされるよう、構築後に明示的に呼ぶ
-        app.run();
-    } catch (const std::exception& e) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", e.what());
-        return 1;
-    }
+    T app;
+    app.init();  // 仮想関数が正しくディスパッチされるよう、構築後に明示的に呼ぶ
+    app.run();
     return 0;
 }
 

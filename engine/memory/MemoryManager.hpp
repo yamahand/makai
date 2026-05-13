@@ -9,8 +9,6 @@
 #include "../Config.hpp"
 #include "../core/log/Logger.hpp"
 #include <memory_resource>
-#include <new>
-#include <stdexcept>
 #include <unordered_map>
 #include <typeindex>
 #include <memory>
@@ -304,11 +302,9 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
         // (1) ブロック配列をマスター FreeList から確保する
         void* blockBuf = master.allocate(sizeof(Block) * PoolSize, alignof(Block));
         if (!blockBuf) {
-            // OOM 経路で std::format を使うと追加の確保が発生し bad_alloc を隠す可能性があるため固定メッセージを使用する。
-            // getPool() は初期化完了後に呼ばれるため、CORE_ERROR（通常 Logger）で記録する。
+            // OOM は回復不能 — ログを出力して abort する
             CORE_ERROR("MemoryManager::getPool: ブロック配列の確保に失敗");
-            assert(false && "MemoryManager::getPool: ブロック配列の確保に失敗");
-            throw std::bad_alloc{};
+            std::abort();
         }
 
         // (2) PoolHolder 本体をマスター FreeList から確保する
@@ -317,10 +313,8 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
             alignof(PoolHolder<T, PoolSize>));
         if (!holderBuf) {
             master.deallocate(blockBuf);  // ブロック配列のリーク防止
-            // 同上: OOM 経路では固定メッセージのみ使用する
             CORE_ERROR("MemoryManager::getPool: PoolHolder の確保に失敗");
-            assert(false && "MemoryManager::getPool: PoolHolder の確保に失敗");
-            throw std::bad_alloc{};
+            std::abort();
         }
 
         // (3) placement new で PoolHolder を構築する（OS ヒープ不使用）
@@ -336,8 +330,8 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
         //     operator[] を使うと「ノード確保 → デフォルト構築 → 代入」の順に動くため、
         //     中間のデフォルト構築された PoolHolderPtr が発生して余分なムーブ代入が行われる。
         //     ここでは emplace を使うことで、マップ内の要素を一度の構築で済ませて効率化している。
-        //     なお、この時点で ptr は既に holder + blockBuf の所有権を持っているため、
-        //     ノード確保中に bad_alloc が投げられてもスタックアンワインド時に ptr のデストラクタで正しく解放され、リークは発生しない。
+        //     例外無効環境では emplace のノード確保失敗時に abort されるため、
+        //     ptr のデストラクタによるリーク防止は発動しないが、abort 前提のため問題ない。
         auto* poolPtr = &holder->pool;
         m_pools->emplace(typeIdx, std::move(ptr));
         return *poolPtr;
@@ -346,10 +340,9 @@ PoolAllocator<T, PoolSize>& MemoryManager::getPool() {
     // 既存プールを返す（PoolSize が一致していることを確認する）
     auto* base = it->second.get();
     if (base->poolSize != PoolSize) {
-        // getPool() は初期化完了後に呼ばれるため CORE_ERROR（通常ログ経路）を使用する
         CORE_ERROR("MemoryManager::getPool: PoolSize mismatch (PoolSize 不一致)");
         assert(false && "MemoryManager::getPool: PoolSize mismatch");
-        throw std::logic_error("MemoryManager::getPool: PoolSize mismatch");
+        std::abort();
     }
     auto* holder = static_cast<PoolHolder<T, PoolSize>*>(base);
     return holder->pool;

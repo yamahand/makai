@@ -1,7 +1,8 @@
 #pragma once
 #include "FreeListAllocator.hpp"
+#include <cstdio>           // std::fputs
+#include <cstdlib>          // std::abort
 #include <memory_resource>
-#include <new>      // std::bad_alloc
 
 namespace mk::memory {
 
@@ -48,9 +49,17 @@ public:
 
 protected:
     void* do_allocate(size_t bytes, size_t alignment) override {
+        // 実装定義動作：bytes == 0 には nullptr を返す（OOM abort を回避）
+        if (bytes == 0) return nullptr;
         void* ptr = m_allocator.allocate(bytes, alignment);
-        // pmr の契約では失敗時に std::bad_alloc を投げる
-        if (!ptr) throw std::bad_alloc{};
+        // pmr の契約では失敗時に例外を投げるが、例外無効環境では abort する
+        // OOM 経路で動的確保を誘発しないよう std::fputs を使用する
+        if (!ptr) {
+            std::fputs("FreeListMemoryResource::do_allocate: メモリ確保に失敗しました\n", stderr);
+            // stderr がリダイレクトされていても診断メッセージを反映しやすくする
+            std::fflush(stderr);
+            std::abort();
+        }
         return ptr;
     }
 

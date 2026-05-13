@@ -8,8 +8,12 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # MSVC: UTF-8 without BOM support for Japanese comments
+# MSVC のデフォルト /EHsc を CMAKE_CXX_FLAGS から除去するのみ。
+# /EHs-c- と _HAS_EXCEPTIONS=0 は makai_engine の PUBLIC オプションとして設定し、
+# リンクするターゲットへ自動伝播させる（engine/CMakeLists.txt 参照）。
 if(MSVC)
-    add_compile_options(/utf-8)
+    add_compile_options(/utf-8 /Zc:preprocessor)
+    string(REGEX REPLACE "/EH[a-z]+" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 endif()
 
 # VC版プレビルドバイナリを使用するため MSVC / 64bit 環境を要求
@@ -103,9 +107,10 @@ set(GLM_BUILD_LIBRARY OFF CACHE BOOL "" FORCE)
 set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 
 # spdlog options: テスト・ベンチマーク・サンプルを無効化してビルド時間を削減
-set(SPDLOG_BUILD_TESTS   OFF CACHE BOOL "" FORCE)
-set(SPDLOG_BUILD_BENCH   OFF CACHE BOOL "" FORCE)
-set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
+set(SPDLOG_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
+set(SPDLOG_BUILD_BENCH    OFF CACHE BOOL "" FORCE)
+set(SPDLOG_BUILD_EXAMPLE  OFF CACHE BOOL "" FORCE)
+set(SPDLOG_NO_EXCEPTIONS  ON  CACHE BOOL "" FORCE)
 
 # RapidJSON は header-only のため、ソースのダウンロードのみ行い CMake ビルドは実行しない
 if(POLICY CMP0169)
@@ -121,6 +126,12 @@ if(POLICY CMP0169)
 endif()
 
 FetchContent_MakeAvailable(imgui glm spdlog)
+
+# spdlog は最終バイナリにリンクされるため、例外無効フラグを揃える（SPDLOG_NO_EXCEPTIONS と対になる）
+if(MSVC)
+    target_compile_options(spdlog PRIVATE /EHs-c-)
+    target_compile_definitions(spdlog PRIVATE _HAS_EXCEPTIONS=0)
+endif()
 
 # Create ImGui library with SDL3 backend
 add_library(imgui_sdl3 STATIC
@@ -139,6 +150,12 @@ target_include_directories(imgui_sdl3 PUBLIC
 )
 
 target_link_libraries(imgui_sdl3 PUBLIC SDL3::SDL3)
+
+# imgui_sdl3 は最終バイナリにリンクされるため、例外無効フラグを揃える
+if(MSVC)
+    target_compile_options(imgui_sdl3 PRIVATE /EHs-c-)
+    target_compile_definitions(imgui_sdl3 PRIVATE _HAS_EXCEPTIONS=0)
+endif()
 
 # 外部ライブラリのターゲットを Visual Studio の "External" フォルダーにまとめる
 foreach(_target IN ITEMS imgui_sdl3 spdlog)
@@ -161,6 +178,12 @@ list(APPEND GAME_SOURCES "${CMAKE_SOURCE_DIR}/main.cpp")
 source_group(TREE ${CMAKE_SOURCE_DIR} FILES ${GAME_SOURCES})
 
 add_executable(${PROJECT_NAME} ${GAME_SOURCES})
+
+# 例外を無効化（外部ライブラリには波及させないため target_* で自プロジェクトのみに適用）
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE /EHs-c-)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE _HAS_EXCEPTIONS=0)
+endif()
 
 # Visual Studio デバッガーの作業ディレクトリを実行ファイルと同じ場所に設定
 set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY $<TARGET_FILE_DIR:${PROJECT_NAME}>)

@@ -30,7 +30,11 @@ target_link_libraries(makai_engine PRIVATE
     spdlog::spdlog
 )
 
-# MSVC: UTF-8 without BOM support for Japanese comments
+# MSVC: UTF-8 サポート（ソース文字コード、コンシューマー不要のため PRIVATE）
+# 例外無効化はエンジンの公開ヘッダーに inline/template 実装が含まれるため、
+# リンクするすべてのターゲットにも同じコンパイルモデルを強制するよう PUBLIC で伝播させる
 if(MSVC)
     target_compile_options(makai_engine PRIVATE /utf-8)
+    target_compile_options(makai_engine PUBLIC /EHs-c-)
+    target_compile_definitions(makai_engine PUBLIC _HAS_EXCEPTIONS=0)
 endif()
