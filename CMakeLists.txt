@@ -9,8 +9,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # MSVC: UTF-8 without BOM support for Japanese comments
 # MSVC のデフォルト /EHsc を CMAKE_CXX_FLAGS から除去するのみ。
-# /EHs-c- と _HAS_EXCEPTIONS=0 は外部ライブラリに波及しないよう
-# 各ターゲットへ個別に適用する（下記 target_compile_options/target_compile_definitions を参照）。
+# /EHs-c- と _HAS_EXCEPTIONS=0 は makai_engine の PUBLIC オプションとして設定し、
+# リンクするターゲットへ自動伝播させる（engine/CMakeLists.txt 参照）。
 if(MSVC)
     add_compile_options(/utf-8 /Zc:preprocessor)
     string(REGEX REPLACE "/EH[a-z]+" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
